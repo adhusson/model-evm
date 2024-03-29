@@ -1,0 +1,24 @@
+\subsection{Return and revert derivations} 
+
+\begin{figure}[ht]
+$$
+\begin{array}{c}
+\dfrac{\env''=\env\set{\gasspent = \env'.\gasspent}\quad \retData''=[\mathbf{1}_\Bool]}
+{
+\env':(\z_\Byt, \callData', \retData', \mu', \Block')\cdot\env:(\Byt,\callData,\retData,\mu,\Block)\cdot\Exec \to \env'':
+(\Byt,\callData,\retData'',\mu,\Block')\cdot\Exec}\rlab{impl\_return} 
+\\\\
+\dfrac{\env''=\env\set{\gasspent = \env'.\gasspent}\quad \retData''=[\mathbf{1}_\Bool]\upd\mu'(\vec x)}
+{
+\env':(\return{\vec x};\Byt', \callData', \retData', \mu', \Block')\cdot\env:(\Byt,\callData,\retData,\mu,\Block)\cdot\Exec \to
+\env'':(\Byt,\callData,\retData'',\mu,\Block')\cdot\Exec}\rlab{expl\_return} 
+\\\\
+\dfrac{\env''=\env\set{\gasspent = \env'.\gasspent}\quad \retData''=[\mathbf{0}_\Bool;\mu'(x)]}
+{
+\env':(\revert{x};\Byt', \callData', \retData', \mu', \Block')\cdot\env:(\Byt,\callData,\retData,\mu,\Block) \cdot\Exec 
+\to 
+\env'':(\Byt,\callData,\retData'',\mu,\Block)  \cdot\Exec}\rlab{revert}
+\end{array}
+$$
+\caption{Return and revert derivations for transaction executions.}
+\end{figure}

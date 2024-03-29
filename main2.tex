@@ -1,0 +1,287 @@
+% Lower the font size for publication but bigger is easier for previewing
+% \documentclass[11pt]{article}
+\documentclass[14pt]{extarticle}
+\usepackage{amsmath, amssymb, mystyle}
+\usepackage{geometry}
+\usepackage{cancel}
+\usepackage{xspace}
+% Remove for publication but no margin is easier for previewing
+\geometry{margin=.1in}
+\begin{document}
+
+\title{A blockchain calculus}
+\author{A. Husson, J. Krivine}
+\date{}
+\maketitle
+
+% opcodes
+\def\Op{\mathsf{Op}}
+\def\call#1{\mathtt{call}(#1)}
+\def\dcall#1{\mathtt{dcall}(#1)}
+\def\sstore#1{\mathtt{sstore}(#1)}
+\def\sload#1{\mathtt{sload}(#1)}
+\def\brd{\mathtt{rdata}}
+\def\bcd{\mathtt{cdata}}
+\def\hsh#1{\mathtt{hash}(#1)}
+\def\return#1{\mathtt{return}(#1)}
+\def\revert#1{\mathtt{revert}(#1)}
+\def\switch#1{\mathtt{if}(#1)}
+\def\while#1{\mathtt{while}(#1)}
+
+% math
+\def\Nat{\mathbb{N}}
+\def\Uint{\mathbb{U}}
+\def\Bool{\mathbb{B}}
+\def\Addr{\mathbb{A}}
+\def\Str{\mathbb{S}}
+\def\ary#1{\left[{#1}\right]}
+\def\z{\mathbf{0}}
+\def\zMem{\z_\memory}
+\def\zArray{[]}
+\def\zStore{\z_\textit{store}}
+\def\zBytecode{\z_{\texttt{B}}}
+
+
+% contracts
+\def\Ctr{\mathsf{Ctr}}
+\def\Abi{\textit{ABI}}
+\def\Block{\mathbf{S}}
+\def\tx{\mathsf{tx}}
+\def\transactions{\textit{Transactions}}
+\def\ctx{\mathsf{Ctx}}
+
+\def\thisVar{\texttt{this}}
+\def\thisVal{\textit{this}}
+
+\def\stateVal{\textit{state}}
+
+\newcommand{\initStep}[3]{\mathsf{Step}^{#1}_{#2.#3}}
+
+\def\senderVar{\texttt{sender}}
+\def\senderVal{\textit{sender}}
+
+\def\returnDataVal{\textit{returndata}}
+\def\dataVal{\textit{data}}
+\def\returnDataVar{\texttt{returndata}}
+\def\gasleftVal{\textit{gasleft}}
+\def\gas{\textit{gas}}
+\def\gasleftVar{\texttt{gasleft}}
+\def\originVal{\textit{origin}}
+\def\toVal{\textit{to}}
+\def\fnVal{\textit{fn}}
+\def\gasVal{\textit{gas}}
+\def\cd{\chi}
+\def\callDataVar{\texttt{calldata}}
+\def\callDataVal{\textit{calldata}}
+\def\memory{\textit{mem}}
+\def\step{\mathsf{Step}}
+\def\steps{\textit{Steps}}
+\def\endStep{\mathsf{End}}
+\def\continuation#1{\textit{continuation}(#1)}
+
+\def\Byt{\mathtt{B}}
+
+%semantics
+\def\Exec{\mathbf{E}}
+\def\rlab#1{\;\mathtt{#1}}
+\def\llab#1{\mathtt{#1}\;}
+\def\comp{\mathrel{\|}}
+\def\Pending{\mathsf{Pending}}
+\def\Def{\mathsf{Def}}
+\def\require{\texttt{require}}
+\def\Revert{\mathit{Revert}}
+\def\rar{\dashrightarrow}
+
+% gas spent
+\def\dcl{\delta_{\mathsf{call}}}
+\def\dxp{\delta_{\mathsf{exp}}}
+\def\dsw{\delta_{\mathsf{sw}}}
+\def\dsr{\delta_{\mathsf{sr}}}
+\def\dmr{\delta_{\mathsf{mr}}}
+\def\denv{\delta_{\mathsf{env}}}
+\def\dcd{\delta_{\mathsf{dcd}}}
+\def\drd{\delta_{\mathsf{drd}}}
+
+\def\OOG{\mathsf{OOG}}
+
+\def\vars{\ensuremath{\textit{Vars}}}
+\def\vals{\ensuremath{\textit{Vals}}}
+\def\valueOf{\textit{valueOf}}
+\def\emptyVal{\textit{emptyValuation}}
+\def\falseVal{\textit{false}}
+\def\trueVal{\textit{true}}
+\def\store{\textit{store}}
+
+\def\bytecodes{\textit{Bytecodes}}
+\def\bytecode{\textit{B}}
+\def\code{\textit{code}}
+\def\contracts{\textit{Contracts}}
+\def\state{\textit{state}}
+\def\states{\textit{States}}
+
+\section{Terminology2}
+
+\subsection{Terminology}
+\paragraph{Values and variables}
+We consider a finite set of values $\vals$ with a distinguished zero value $\z$. All common types (strings, numbers, booleans, addresses) are assumed to be transparently encoded to and from this value set (so for instance, any string is a value and any value is a string).
+
+For convenience, we can talk about the set of strings $\Str$, of addresses $\Addr$, of unsigned integers $\Uint$, or of booleans $\Bool$. But we are really talking about the set of values.
+
+Common operations such as $+$, $-$, comparison, etc are defined on values.
+
+\paragraph{Variables}
+We use variables, or names, as field names in the smart contract language, and also in the language semantics. There is a countable set of names $\vars$. 
+
+\paragraph{Memory}
+Contracts use memory as a transient scratchpad.
+% We use the following ground types: $\Nat$ for naturals, $\Addr$ for account addresses, $\Str$ for strings and $\Bool$ for booleans. We also consider the restricted element $\bot\not\in\vals$.
+A \emph{memory} or $\memory$ is a total mapping from names to values. The memory $(x\mapsto v,y\mapsto v')$ maps $x$ to $v$, $y$ to $v'$, and maps every other name to $\z$. $\zMem$ is the empty memory, it maps every name to $\z$.
+
+\paragraph{Tuples}
+We use tuples everywhere to structure definitions. A \emph{tuple} is a partial mapping from names (to anything). $()$ is the empty tuple.
+
+\subparagraph{Example} 
+We will later introduce \emph{contracts} as tuples of the form $(\Abi\in\Str\rightarrow\bytecodes,\store\in\Nat\rightarrow\vals)$. 
+This means that all contracts have domain $\set{\Abi,\store}\subseteq\vars$, that they all map $\Abi$ to strings-to-bytecode mappings, and that they all map $\store$ to integers-to-value mappings.
+Given concrete values $A$ and $S$, $C = (\Abi\mapsto A,\store\mapsto D)$ is the contract such that $C(\Abi) = A$ and $C(\store) = D$
+
+\subparagraph{}
+When convenient the name of a tuple member is omitted and its position implicitly denotes the corresponding name. 
+\subparagraph{Example}
+$C' = (A',D')$ is the contract with domain $\set{\Abi,\store}$ such that $C'(\Abi) = A'$ and $C'(\store) = D'$
+
+\paragraph{Stores} Contracts use their store (or storage) as long-term memory. A $\store$ is a total mapping from values (representing integers) to values. The store $(2\mapsto v)$ maps $2$ to $v$, and it maps every other integer to $\z$. $\zStore$ is the empty store, it maps every number to $\z$.
+
+\paragraph{Arrays}
+Partial mappings from integers (to anything) are \emph{arrays}. We use arrays to structure definitions. $[]$ is the empty array. For any set $X$, the set of arrays with all elements in $X$ is $\vec X$.
+\subparagraph{Examples}
+$a = [3,0,1]$ has domain $\mathbf{3}$. $a(0) = 3$, $a(1) = 0$, $a(2) = 1$.
+
+\def\Dom{\textrm{Dom}}
+\paragraph{Update syntax}
+A mapping can be defined as an update of an existing mapping. If a mapping $m$ is defined on $x$ then $m' = m\set{x\mapsto v}$ is equal to $m$, except that $m'(x) =v$. The notation is extended to more than one element.
+
+\subparagraph{Example} $C\set{\store\mapsto D'}$ is the contract $(\Abi\mapsto A,\store\mapsto D')$. $a\set{1\mapsto10}$ is the array $[3,10,1]$.
+
+\subparagraph{Nested update syntax} If $t$ is a tuple and $t.f$ is a mapping, then $t\set{f\set{\dots}} = t\set{f\mapsto t.f\set{\dots}}$.
+
+\subparagraph{Example} If $\state$ is a tuple, $\state.\textit{address}$ is a tuple, and $\state.\textit{address}.\store$ is a store, then $\state\set{\textit{address}\set{\store\set{3 \mapsto 7}}}$ is equal to $\state$ except that $\state.\textit{address}.\store(3) = 7$.
+
+\subsection{Bytecodes}
+A \emph{bytecode} $\bytecode$ is a stack of \emph{instructions} $I$, built using the grammar (for all $n$):
+$$\begin{array}{lcll}
+\bytecode &:: =& I ; \bytecode \mid \z \\
+I & :: =& x:=E \mid \sstore{x_\textrm{loc},E} & \hbox{Assignment} \\
+&&{}\mid \return {x_0,\dots,x_n} \mid \revert{x_0,\dots,x_n} & \hbox{Return and revert} \\
+&& {}\mid \switch{x_\textrm{cond}, B} \mid \while{x_\textrm{cond},B}  & \hbox{Conditional}\\
+&&{}\mid \call{x_\textrm{to}, x_\textrm{fn}, x_0, \dots, x_n,x_\textrm{gas}}\\
+&&{}\mid \dcall{x_\textrm{to}, x_\textrm{fn}, x_0, \dots, x_n,x_\textrm{gas}}
+ & \hbox{Function calls} \\
+E & ::= & op(x_0,\dots,x_n)\mid \sload{x_\textrm{loc}}\mid\hsh{x} & \hbox{Expression} \\ 
+&& \mid \gasleftVar \mid \thisVar \mid \mathtt{sender}\mid \brd[i] \mid\bcd[i] 
+\end{array}
+$$
+where $op:\vals^n\to \vals$ denote any operation on values (constant values are for $n=0$), $\hsh{}$ gives access to a native hash function that maps values to integers, 
+$\gasleftVar$, $\thisVar$ and $\senderVar$ give respectively access to the amount of gas unit left, the address of the execution runner and the address of the last caller of this execution. 
+Each element $\brd[i]$ gives access to the \emph{return data} values of the last call and 
+$\bcd[i]$ gives access to the \emph{call data} values.
+
+We use $\bytecodes$ to denote the set of bytecodes (words recognised by the above grammar).
+
+% \paragraph{Bytecode continuation} If the bytecode $\bytecode$ is of the form $I;\bytecode'$, then $\continuation{\bytecode} := \bytecode'$.
+
+
+\paragraph{Example} We can define some basic solidity constructs as macros (introduced variables are fresh):
+$$ \begin{array} {lll}
+\switch{E,B} &:=& x_\textrm{cond} := E; \switch{x_\textrm{cond},B}\\\\
+\dots &:=& \dots\\\\
+\dcall{E_\textrm{to},E_{\textrm{fn}},E_0,\dots,E_n,E_{\textrm{gas}}} &:=& \left\{
+\begin{array}{l}
+x_\textrm{to} := E_\textrm{to};x_\textrm{fn} := E_\textrm{fn}; \\
+x_0 := E_0; \dots; x_n := E_n; \\
+x_\textrm{gas} := E_\textrm{gas}\\
+\dcall{x_\textrm{to},x_\textrm{fn},x_0,\dots,x_n,x_\textrm{gas}}\\\end{array}\right.\\\\
+\require(E_\textrm{cond},E_\textrm{reason}) &:=& \switch{\neg E_\textrm{cond},\revert{E_\textrm{reason}}}\\\\
+\texttt{$a$.$f$\{gas:$E_\textrm{gas}$\}($E_0,\dots,E_n$)} &:=& \left\{
+\begin{array}{l}
+    \call{a,f,E_0,\dots,E_n,E_\textrm{gas}}; \\
+    \require(\brd[0],\brd[1])
+\end{array}\right. \\\\
+\begin{array}{l}
+\texttt{try $a$.$f$\{gas:$E_\textrm{gas}$\}($E_0,\dots,E_n$)}\\
+\texttt{returns($x_0,\dots,x_m$)}\\
+\texttt{\{\bytecode\} catch \{\bytecode'\}}\end{array} &:=& \left\{
+    \begin{array}{l}
+        \call{a,f,\vec v,g}; \mathit{success}_\Bool := \brd_0\\
+        \switch{\mathit{success}_\Bool, (y_i:=\brd_{i+1})_{i\leq |\brd|});\bytecode} \\
+        \switch{\neg\mathit{success}_\Bool, \bytecode'}
+    \end{array}\right. \\\\
+z:=x_\Nat[y] &:=& y'_\Nat:=\hsh{y}+x_\Nat; z:=\sload{z_\Nat}
+\end{array}
+$$
+
+\subsection{Smart contracts}
+A smart contract $\Ctr$ is a tuple of the form $$\Ctr:=(\Abi\in \Str\to \bytecodes, \store\in \Nat\to \vals)$$ where $\Abi$ is the contract's \emph{(application binary) interface}, mapping a function name to its bytecode. The contract storage maps positions to values in a persistent manner. We use $\contracts$ to denote the set of possible smart contracts.
+
+A \emph{(blockchain) state} is a mapping $\state\in \Addr\to\contracts$. The set of all possible states is $\states$.
+
+\section{Operational semantics}
+
+\subsection{Execution steps and environment}
+
+An \emph{(execution) context} is a tuple of the form $\ctx:=(\callDataVal\in\vec\vals,\thisVal\in\Addr,\senderVal\in\Addr)$, 
+where $\callDataVal$ is an array of values given by the caller, $\thisVal$ is the address of the current execution runner, 
+and $\senderVal$ is the address of the execution's caller. 
+
+An \emph{(execution) step} is a tuple of the form
+$\step:=(
+    \code\in\bytecodes,
+    \gas\in\Uint,
+    \returnDataVal\in\vec\vals, 
+    \memory\in\vars\to\vals, 
+    \state\in\states
+)$. The set of all steps is $\steps$.
+
+\subsection{Transaction initialization}
+A \emph{transaction} $t$ is given as a tuple of the form $\tx:=(\originVal\in\Addr,\toVal\in\Addr,\fnVal\in\Str,\callDataVal\in\vec \vals, \gasVal\in\Uint)$ where $\originVal$ is the transaction originator, $\toVal$ is the address of the called contract, $\fnVal$ a function name and $\vec c$ its call data. The maximum amount of gas the transaction can spend is given by $\gasVal$.
+We use $\transactions$ to denote the set of transactions.
+
+A transaction $\tx$ executed on a blockchain $\state$ induces an initial context $\ctx_\tx$ and an initial step $\step_\tx$:
+
+$$ \begin{array} {lll}
+\ctx(\tx) &:=& (\tx.\originVal,\tx.\toVal,\tx.\callDataVal)\\\\
+\step(\tx)&:=& \state \mapsto (\state(\tx.\toVal).\Abi(\tx.\fnVal),\tx.\gas, \zArray,\zMem,\state)\\\\
+\end{array}$$
+
+
+
+\subsection{Checking gas limit}
+An execution step is out of gas if it has less than $0$ gas left. Derivation rules $\rar$ below don't check gas, but the steps are only valid ($\rightarrow$) if the step has some gas left. In the derivation below, \texttt{"out of gas"} is a value that represents the string \emph{out of gas}.
+\begin{equation}
+\dfrac{
+\ctx\vdash\step\rar \step' \quad \step'.\gas < 0
+}{
+\ctx\vdash\step\to \step\set{\bytecode\mapsto \revert{\texttt{"out of gas"}};\zBytecode}
+}
+\end{equation}
+
+\begin{equation}
+\dfrac{
+\ctx\vdash\step\rar \step' \quad \step'.\gas \geq 0
+}{
+\ctx\vdash\step\to \step'
+}
+\end{equation}
+
+\newpage 
+\input{call-derivations2}
+\newpage
+\input{allocation-derivations2}
+\newpage
+\input{conditionals2}
+
+
+\subsection{Abstract custodian contracts}
+
+
+\end{document}

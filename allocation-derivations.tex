@@ -1,0 +1,44 @@
+\def\eval{\mathsf{eval}}
+\subsection{Storage and memory allocation}
+We first define the $\eval$ function that maps an expression to value and a gas cost:
+$$
+\begin{array}{lll}
+    \eval(\env, \callData, \retData, \mu, \sigma, op(x)) &=& 
+    (op(\mu(x)),\dmr) \\
+    \eval(\env, \callData, \retData, \mu, \sigma, \sload{x_\Nat}) &=& (\sigma(x_\Nat),\dsr) \hbox{ if } x_\Nat\in\Def(\sigma)\\
+    && (\z,\dsr) \hbox{ otherwise} \\
+    \eval(\env, \callData, \retData, \mu, \sigma, \mathtt{gasleft}) &=& (\env.\gasmax -\env.\gasspent,\denv) \\
+    \eval(\env, \callData, \retData, \mu, \sigma, \mathtt{this}) &=& (\env.\this,\denv) \\
+    \eval(\env, \callData, \retData, \mu, \sigma, \mathtt{sender}) &=& (\env.\sender,\denv) \\
+    \eval(\env, \callData, \retData, \mu, \sigma, \bcd_i) &=& (\cd_{i},\dcd) \\
+    \eval(\env, \callData, \retData, \mu, \sigma, \brd_i) &=& (\rd_{i},\drd)
+\end{array}
+$$
+\begin{figure}[ht]
+$$
+\begin{array}{c}
+\dfrac{
+(v,\delta)=\eval(\env, \callData, \retData, \mu, \Block(\env.\this).\sigma,E) \quad \env' = \env\set{\gasspent=\env.\gasspent + \dxp+\delta}
+}
+{
+\env:(x:=E;\Byt, \callData,\retData,\mu, \Block);\Exec \rar \env':(\Byt, \callData,\retData,\mu\upd[x\mapsto v],\Block);\Exec
+}\rlab{mstore}
+\\\\
+\dfrac{
+\begin{array}{lll}
+    (v,\delta)&=&\eval(\env,  \callData,\retData, \mu, \Block(\env.\this).\sigma,E) \\
+    \env'&=&\env\set{\gasspent= \env.\gasspent + \dsw+\delta}
+\end{array}
+\quad 
+\begin{array}{lll}
+    \sigma' &=& \Block(\env.\this).\sigma \upd [x_\Nat\mapsto v] \\
+    \Block' &=& \Block \upd [(\env.\this)\mapsto (\Block(\env.\this).\Abi, \sigma']
+\end{array}
+}
+{
+\env:(\sstore{x_\Nat,E};\Byt, \callData,\retData, \mu, \Block);\Exec \rar \env':(\Byt, \callData,\retData,\mu,\Block');\Exec
+}\rlab{sstore}
+\end{array}
+$$
+\caption{Allocation rules.}
+\end{figure}

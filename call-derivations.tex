@@ -1,0 +1,64 @@
+\subsection{Function calls derivations}
+\def\callable#1{#1\hbox{\--}\mathsf{Callable}}
+Let $n \in\Nat$, $a\in\Addr$ and $f\in\Str$. We define the following predicate:
+$$
+\callable{\Byt}(a,f,n,\Block) := \exists \sigma\in V^X.\Block(a)=(\Abi,\sigma) \wedge \Abi(f)= (\Byt,n) 
+$$
+
+\begin{table}[ht]
+$$
+\begin{array}{c}
+\dfrac{
+    \begin{array}{lll}
+        \env'.\gasmax &=& \mu(x_\Nat) \\
+        \env'.\gasspent &=& \env.\gasspent + \dcl \\
+        \env'.\this & = & \mu(x_\Addr) \\
+        \env'.\sender & = & \env.\this
+    \end{array}
+    \quad
+    \begin{array}{l}
+        \mu(x_\Nat) \leq \env.\gasmax \\
+        \callable{\Byt'}(\mu(x_\Addr),\mu(x_\Str),|\vec x|,\Block)
+    \end{array}
+}
+{
+ \env:(\call{x_\Addr,x_\Str,\vec x, x_\Nat}\cdot\Byt,\callData, \retData, \mu, \Block)\cdot\Exec 
+ \rar 
+ \env':(\Byt',\mu(\vec x), \zVec, \zVal,\Block)\cdot\env:(\Byt, \callData, \retData, \mu, \Block)\cdot\Exec
+}\rlab{call}
+\\\\
+\dfrac{
+    \begin{array}{lll}
+        \env'.\gasmax &=& \mu(x_\Nat) \\
+        \env'.\gasspent &=& \env.\gasspent + \dcl \\
+        \env'.\this & = & \env.\this \\
+        \env'.\sender & = & \env.\sender
+    \end{array}
+    \quad 
+    \begin{array}{l}
+        \mu(x_\Nat) \leq \env.\gasmax \\
+        \callable{\Byt'}(\mu(x_\Addr),\mu(x_\Str),|\vec x|, \Block)
+    \end{array} 
+}
+{
+ \env:(\dcall{x_\Addr,x_\Str,\vec x, x_\Nat}\cdot\Byt, \callData, \retData, \mu, \Block)\cdot\Exec 
+ \rar 
+ \env':(\Byt', \mu(\vec x), \zVec, \zVal,\Block)\cdot\env:(\Byt, \callData, \retData,\mu, \Block)\cdot\Exec
+}\rlab{dcall}
+\\\\
+\dfrac{
+\env' = \env\set{\gasspent = (\env.\gasspent + \dcl)}
+\quad 
+\mu(x_\Nat) \leq \env.\gasmax \quad
+\forall\Byt'.\neg\callable{\Byt'}(\mu(x_\Addr),\mu(x_\Str),|\vec x|,\Block) 
+}
+{
+ \env:(\mathsf{[d]call}(x_\Addr, x_\Str, \vec x, x_\Nat)\cdot\Byt, \callData,\retData,\mu, \Block)\cdot\Exec 
+ \rar 
+ \env': (\revert{x}, \zVec,\zVec,\zVal, \z_\Block)\cdot\Exec
+}\rlab{[d]callFail}
+
+\end{array}
+$$
+\caption{Call and delegate call derivations}
+\end{table}

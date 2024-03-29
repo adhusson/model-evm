@@ -1,0 +1,237 @@
+% Lower the font size for publication but bigger is easier for previewing
+% \documentclass[11pt]{article}
+\documentclass[14pt]{extarticle}
+\usepackage{amsmath, amssymb, mystyle}
+\usepackage{geometry}
+% Remove for publication but no margin is easier for previewing
+\geometry{margin=.1in}
+\begin{document}
+
+\title{A blockchain calculus}
+\author{A. Husson, J. Krivine}
+\date{}
+\maketitle
+
+% opcodes
+\def\Op{\mathsf{Op}}
+\def\call#1{\mathtt{call}(#1)}
+\def\dcall#1{\mathtt{dcall}(#1)}
+\def\sstore#1{\mathtt{sstore}(#1)}
+\def\sload#1{\mathtt{sload}(#1)}
+\def\brd{\mathtt{rdata}}
+\def\bcd{\mathtt{cdata}}
+\def\hsh#1{\mathtt{hash}(#1)}
+
+
+\def\return#1{\mathtt{return}(#1)}
+\def\revert#1{\mathtt{revert}(#1)}
+\def\switch#1{\mathtt{if}(#1)}
+\def\while#1{\mathtt{while}(#1)}
+
+% math
+\def\upd{\mathrel{\bf\langle\!+\!\!\mid}}
+\def\eps{\epsilon}
+\def\sig{\sigma}
+\def\Nat{\mathbb{N}}
+\def\Bool{\mathbb{B}}
+\def\Addr{\mathbb{A}}
+\def\Str{\mathbb{S}}
+\def\tuple#1{\langle{#1}\rangle}
+\def\z{\mathbf{0}}
+\def\zVec{\langle\rangle}
+\def\zVal{[]}
+
+
+% contracts
+\def\Ctr{\mathsf{Ctr}}
+\def\Abi{\alpha}
+\def\Block{\mathbf{S}}
+\def\tx{\mathtt{tx}}
+
+\def\env{\varepsilon}
+
+\def\gasspent{\gamma}
+\def\gasmax{\Gamma}
+\def\this{\mathop{\downarrow}}
+\def\sender{\mathop{\uparrow}}
+\def\rd{\varrho}
+\def\retData{\vec\rd}
+\def\cd{\chi}
+\def\callData{\vec\cd}
+
+\def\Byt{\mathtt{B}}
+
+%semantics
+\def\Exec{\mathbf{E}}
+\def\rlab#1{\;\mathtt{#1}}
+\def\llab#1{\mathtt{#1}\;}
+\def\comp{\mathrel{\|}}
+\def\Pending{\mathsf{Pending}}
+\def\Def{\mathsf{Def}}
+\def\Require{\mathit{Require}}
+\def\Revert{\mathit{Revert}}
+\def\rar{\dashrightarrow}
+
+% gas spent
+\def\dcl{\delta_{\mathsf{call}}}
+\def\dxp{\delta_{\mathsf{exp}}}
+\def\dsw{\delta_{\mathsf{sw}}}
+\def\dsr{\delta_{\mathsf{sr}}}
+\def\dmr{\delta_{\mathsf{mr}}}
+\def\denv{\delta_{\mathsf{env}}}
+\def\dcd{\delta_{\mathsf{dcd}}}
+\def\drd{\delta_{\mathsf{drd}}}
+
+\def\OOG{\mathsf{OOG}}
+
+\section{Terminology}
+
+\subsection{Variables and valuation}
+We consider a set of values $V$. In the context of this paper, a type $T$ is subset of $V$ that contains a $\z$ for each type, denoted $\z_T$. We use $\Nat$, addresses $\Addr$, strings $\Str$ and Booleans $\Bool$ as ground types. We also consider the restricted element $\bot\not\in V$.
+
+For all countable set $X$, an \emph{$X$-valuation} is a complete mapping $\nu: X \to V\uplus\set{\bot}$. We use $\Def(\nu):= \set{x\in X\mid \nu(x)\in V}$. We also use $\nu:=[x\mapsto v; y\mapsto v']$ to denote an $X$-valuation $\nu$ such that $\nu(x)=v$, $\nu(y)=v'$ and $\nu(z)=\bot$ for all $z\not\in\set{x,y}$. We let $\nu:=\zVal$, for the valuation that satisfies $\Def(\nu)=\emptyset$. We also write $\nu:=\nu_0\upd \nu_1$ to denote the $X$-valuation satisfying $\nu(x)=\nu_0(x)$ for all $x\not\in\Def(\nu_1)$ and $\nu(x)=\nu_1(x)$ otherwise. In the context of an $X$-valuation $\nu$, we use the naming scheme $x_T$ to denote the fact that $\nu(x_T)\in T$. 
+
+For all $X$-valuation $\nu$ and $\vec x\in X^n$, we write $\nu(\vec x)$ for the vector $\tuple{\nu(x_0),\dots,\nu(x_n)}\in\vec V$.
+
+\subsection{Bytecodes}
+A \emph{bytecode} $\Byt$ is a stack of \emph{instructions} $I$, built using the grammar:
+$$\begin{array}{lcll}
+\Byt &:: =& I ; \Byt \mid \z_\Byt \\
+I & :: =& x:=E \mid \sstore{x_\Nat,E} & \hbox{Assignment} \\
+&&{}\mid \return {\vec x} \mid \revert x & \hbox{Return and revert} \\
+&& {}\mid \switch{x_\Bool, I} \mid \while{x_\Bool,I}  & \hbox{Conditional}\\
+&&{}\mid \call{x_\Addr, x_\Str, \vec x, x_\Nat} \mid  \dcall{x_\Addr, x_\Str, \vec x, x_\Nat} & \hbox{Function calls} \\
+E & ::= & op(\vec x)\mid \sload{x_\Nat}\mid\hsh{x} & \hbox{Expression} \\ 
+&& \mid \mathtt{gasleft} \mid \mathtt{this} \mid \mathtt{sender}\mid \brd_i \mid\bcd_i 
+\end{array}
+$$
+where $op:V^k\to V$ denote any operation on values (constant values are for $k=0$), $\hsh{}$ gives access to a native hash function that maps values to integers, $\mathtt{gasleft}, \mathtt{this}$ and $\mathtt{caller}$ give respectively access to the amount of gas unit left, the address of the execution runner and the address of the last caller of this execution. Each element $\brd_i$ gives access to the \emph{return data} values of the last call and $\bcd_i$ gives access to the \emph{call data} values.
+
+We use $\mathcal{B}$ to denote the set of bytecodes (words recognised by the above grammar).
+
+\paragraph{Example} We can define some basic solidity constructs as macros:
+$$ \begin{array} {lll}
+\Require(x_\Bool,y) &:=& s_\Bool:=\neg x_\Bool;\switch{s_\Bool,\revert{y}}\\\\
+a.f(\vec v,g) &:=& \left\{
+\begin{array}{l}
+    \vec x:=\vec v; x_\Addr:=a; x_\Str:=f; x_\Nat:=g \\
+    \call{x_\Addr,x_\Str,\vec x,x_\Nat}; s_\Bool:=\brd_0; y:=\brd_1\\
+    \Require(s_\Bool,y)
+\end{array}\right. \\\\
+\mathit{try}\ a.f(\vec v,g)\ \mathit{returns}(\vec y)\ \{\Byt\}\ \mathit{catch}\ \set{\Byt'} &:=& \left\{
+    \begin{array}{l}
+        a.f(\vec v,g); \mathit{success}_\Bool := \brd_0; \mathit{fail}_\Bool := \neg\brd_0\\ 
+        \switch{\mathit{success}_\Bool, (y_i:=\brd_{i+1})_{i\leq |\brd|});\Byt} \\
+        \switch{\mathit{fail}_\Bool, \Byt'}
+    \end{array}\right. \\\\
+z:=x_\Nat[y] &:=& y'_\Nat:=\hsh{y}+x_\Nat; z:=\sload{z_\Nat}
+\end{array}
+$$
+
+\subsection{Smart contracts}
+A smart contract $\Ctr$ is given as a pair $$\Ctr:=(\Abi: \Str\to \mathcal{B}\times n, \sigma: \Nat\to V)$$ where $\Abi$ is the contract's \emph{(application binary) interface}, mapping a function name to its bytecode and input arity. The storage $\Nat$-valuation $\sigma$ maps storage positions to values in a persistent manner and we call $\Def(\sig)$ the contract's \emph{(persistent) storage}. We use $\mc C$ to denote the set of possible smart contracts.
+
+A \emph{(blockchain) state} $\Block$ is a mapping $\Block:\Addr\to\mc{C}$. For all contract $\Ctr$, we use $\Ctr.\Abi$ and $\Ctr.\sig$ to denote its first and second projection. Contracts $\Ctr$ such that $\Def(\Ctr.\al)=\emptyset$ are called \emph{externally owned account} (EOA) and must satifsfy $\Def(\Ctr.\sigma)=\emptyset$.
+
+\section{Operational semantics}
+
+\subsection{Execution steps and environment}
+
+An \emph{(execution) environment} is a tuple of the form $\env:=(\gasmax\in\Nat,\gasspent\in\Nat,\this\in\Addr,\sender\in\Addr)$, where $\gasmax$ (\emph{gasmax}) is the max amount of gas an execution step is allowed to spend, $\gasspent$ (\emph{gasspent}) is the gas spent so far, $\this$ (\emph{this}) is the address of the current execution runner, and $\sender$ (\emph{sender}) is the address of the execution's caller. We use $\env.\gasmax, \env.\gasspent, \env.\this$ and $\env.\sender$ to access to $\env$'s fields. For all fields $x,y\in\set{\gasmax,\gasspent,\this,\sender}$, we use the update notation $\env'=\env\set{x= v}$ to denote the environment $\env'$ satisfying $\env'.y = \env.y$ for all $x\neq y$ and $\env.x=v$. 
+
+An \emph{execution step} is a tuple $E:=(\Byt, \callData,\retData, \mu, \Block)$ where $\Byt\in\mc B$ is a bytecode, $\callData\in \vec V$ and $\retData\in\vec V$ are a tuple of \emph{call} and \emph{return values} with $\rd_0\in\Bool$ called the \emph{return status}, $\mu\in V^X$ is a \emph{memory} valuation, and $\Block\in\mc S$ is the blockchain state at that computation step.
+
+An \emph{execution (stack)} $\Exec$, is a stack of execution steps in their environments:
+$$
+\Exec ::= (\env:E)\cdot\Exec \mid \z_\Exec
+$$
+We use $\mc E$ to denote the set of possible executions.
+\subsection{Transaction initialization}
+A \emph{transaction} $t$ is given as a tuple $\tx\in \Addr\times\Str\times V^n\times \Nat\times \Addr$ of the form $\tx:=(a,f,\vec v, G, o)$ where $a$ is the address of the called contract, $f$ a function name and $\vec v$ its arguments. The maximum amount of gas the transaction can spend is given by $G$ and $o$ is the transaction originator. For any transaction $\tx$ we use 
+$\tx.a, \tx.f, \tx.{\vec v},\tx.G,\tx.o$ to access a particular field.
+We use $\mc T$ to denote the set of transactions.
+
+Define the $\mathsf{init}: \mc T\times \mc S \to \mc E$ as:
+%%
+$$
+\mathsf{init}(\tx, \Block) :=  \env:(\call{x_\Addr,x_\Str,\vec x, x_\Nat};\z_\Byt,\zVec,\zVec,\mu,\Block)\cdot \z_\Exec
+$$ 
+with:
+$$
+\begin{array}{cc}
+\mu := \left[ 
+    \begin{array}{lll}
+    x_\Addr & \mapsto & \tx.a \\
+    x_\Str & \mapsto & \tx.f \\
+    x_i &\mapsto& \tx.v_i \\
+    x_\Nat & \mapsto & \tx.G \\
+    \end{array}\right] 
+& \hbox{ and }
+\left\{
+\begin{array}{lll}
+    \env.\gasmax &:=&\tx.G \\
+    \env.\gasspent &:=& 0 \\
+    \env.\this&:=&\tx.o \\ 
+    \env.\sender&:=&\tx.o 
+\end{array}
+\right.
+\end{array}
+$$
+
+\subsection{Checking gas limit}
+We define the following \emph{Out of Gas} predicate:
+$$
+\OOG(\env) := \env.\gasspent > \env.\gasmax 
+$$
+It is used to derive the generic derivations:
+\begin{equation}
+\dfrac{
+\env:E\cdot\Exec\rar \env':E'\cdot\Exec' \quad \OOG(\env')
+}{
+\env:E\cdot\Exec\to \env: (\revert{x},\zVec,\zVec,\zVal,\z_\Block)\cdot\Exec
+}
+\end{equation}
+
+\begin{equation}
+\dfrac{
+\env:E\cdot\Exec\rar \env':E'\cdot\Exec' \quad \neg\OOG(\env')
+}{
+\env:E\cdot\Exec\to \env':E'\cdot\Exec'
+}
+\end{equation}
+
+\newpage 
+\input{call-derivations}
+\newpage
+\input{return-derivations}
+\newpage
+\input{allocation-derivations}
+\newpage
+\input{conditionals}
+
+\section{Black box interaction}
+
+\subsection{Bytecode abstraction}
+\def\aByt{{\Byt^\sharp}}
+\def\burn{\dagger}
+
+We extend the bytecode grammar:
+$$\begin{array}{lcll}
+\aByt &:: =& \Byt \mid \aByt\vee \aByt
+\end{array}
+$$
+with the following (non deterministic) interpretation:
+$$
+\begin{array}{c}
+\dfrac{\env:(\Byt,\callData,\retData,\mu,\Block)\cdot\Exec\rar \Exec'}
+{\env:(\Byt\vee \Byt',\callData,\retData,\mu,\Block)\cdot\Exec\rar \Exec'}
+\qquad
+\dfrac{\env:(\Byt,\callData,\retData,\mu,\Block)\cdot\Exec\rar \Exec'}
+{\env:(\Byt'\vee \Byt,\callData,\retData,\mu,\Block)\cdot\Exec\rar \Exec'}
+\end{array}
+$$
+
+\subsection{Abstract custodian contracts}
+
+
+\end{document}

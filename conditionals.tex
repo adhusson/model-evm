@@ -1,0 +1,29 @@
+\subsection{Conditionals and loops}
+
+\begin{figure}[ht]
+$$
+\begin{array}{c}
+\dfrac{
+\env'=\env\set{\gasspent=\env.\gasspent+\dmr} \quad
+\Byt'' = \left\{\begin{array}{ll}
+\Byt';\Byt &\hbox{if}\ \mu(x_\Bool) \\
+\Byt &\hbox{else}
+\end{array}\right.
+} 
+{
+\env:(\switch{x_\Bool,\Byt'};\Byt,\callData,\retData, \mu, \Block)\cdot\Exec \rar\env':(\Byt'',\callData, \retData, \mu, \Block)\cdot\Exec
+}\rlab{if}
+\\\\
+\dfrac{
+\env'=\env\set{\gasspent=\env.\gasspent+\dmr} 
+\quad \Byt'' = \left\{\begin{array}{ll}
+\Byt';\while{x_\Bool,\Byt'};\Byt &\hbox{if}\ \mu(x_\Bool) \\
+\Byt &\hbox{else}
+\end{array}\right.} 
+{
+\env:(\while{x_\Bool,\Byt'};\Byt,\callData,\retData,\mu, \Block)\cdot\Exec \rar\env':(\Byt'', \callData,\retData, \mu, \Block)\cdot\Exec
+}\rlab{while} 
+\end{array}
+$$
+\caption{Conditional and while loop.}
+\end{figure}
