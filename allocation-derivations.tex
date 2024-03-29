@@ -2,41 +2,42 @@
 \subsection{Storage and memory allocation}
 We first define the $\eval$ function that maps an expression to value and a gas cost:
 $$
-\begin{array}{lll}
-    \eval(\env, \callData, \retData, \mu, \sigma, op(x)) &=& 
-    (op(\mu(x)),\dmr) \\
-    \eval(\env, \callData, \retData, \mu, \sigma, \sload{x_\Nat}) &=& (\sigma(x_\Nat),\dsr) \hbox{ if } x_\Nat\in\Def(\sigma)\\
-    && (\z,\dsr) \hbox{ otherwise} \\
-    \eval(\env, \callData, \retData, \mu, \sigma, \mathtt{gasleft}) &=& (\env.\gasmax -\env.\gasspent,\denv) \\
-    \eval(\env, \callData, \retData, \mu, \sigma, \mathtt{this}) &=& (\env.\this,\denv) \\
-    \eval(\env, \callData, \retData, \mu, \sigma, \mathtt{sender}) &=& (\env.\sender,\denv) \\
-    \eval(\env, \callData, \retData, \mu, \sigma, \bcd_i) &=& (\cd_{i},\dcd) \\
-    \eval(\env, \callData, \retData, \mu, \sigma, \brd_i) &=& (\rd_{i},\drd)
+\begin{array}{llll}
+    \eval(\ctx, \textit{gas},r,\memory,\state, op(x)) &=& 
+    (op(s.\memory(x)),&\dmr) \\
+    \eval(\ctx, \textit{gas},r,\memory,\state, \sload{x_\Nat}) &=& (s.\state(x_\Nat),&\dsr)\\
+    \eval(\ctx, \textit{gas}, r,\memory,\state, \mathtt{gasleft}) &=& (s.\textit{gas},&\denv) \\
+    \eval(\ctx,\textit{gas}, r,\memory,\state,\mathtt{this}) &=& (\ctx.\thisVal,&\denv) \\
+    \eval(\ctx, \textit{gas}, r,\memory,\state, \mathtt{sender}) &=& (\ctx.\senderVal,&\denv) \\
+    \eval(\ctx, \textit{gas}, r,\memory,\state,\bcd[i]) &=& (s.\callDataVal[i],&\dcd) \\
+    \eval(\ctx, \textit{gas}, r,\memory,\state,\brd[i]) &=& (s.\returnDataVal[i],&\drd)
 \end{array}
 $$
 \begin{figure}[ht]
 $$
 \begin{array}{c}
 \dfrac{
-(v,\delta)=\eval(\env, \callData, \retData, \mu, \Block(\env.\this).\sigma,E) \quad \env' = \env\set{\gasspent=\env.\gasspent + \dxp+\delta}
+\eval(\ctx,\textit{gas}, r,\memory,\state,E) = (v,\delta) 
 }
 {
-\env:(x:=E;\Byt, \callData,\retData,\mu, \Block);\Exec \rar \env':(\Byt, \callData,\retData,\mu\upd[x\mapsto v],\Block);\Exec
+\ctx\vdash 
+(x:=E;\bytecode,\textit{gas}, r, \memory,\state) 
+\rar 
+(\bytecode,\textit{gas}-\delta-\delta_\mathsf{mw}, r,\memory\set{x\mapsto v},\state)
 }\rlab{mstore}
+\end{array}
 \\\\
+\begin{array}{c}
 \dfrac{
-\begin{array}{lll}
-    (v,\delta)&=&\eval(\env,  \callData,\retData, \mu, \Block(\env.\this).\sigma,E) \\
-    \env'&=&\env\set{\gasspent= \env.\gasspent + \dsw+\delta}
-\end{array}
-\quad 
-\begin{array}{lll}
-    \sigma' &=& \Block(\env.\this).\sigma \upd [x_\Nat\mapsto v] \\
-    \Block' &=& \Block \upd [(\env.\this)\mapsto (\Block(\env.\this).\Abi, \sigma']
-\end{array}
+\eval(\ctx,\textit{gas}, r,\memory,\state,E) = (v,\delta)
+\quad
+\state' = \state\set{\ctx.\thisVal\set{\store\set{\memory(x_\Nat)\mapsto v}}}
 }
 {
-\env:(\sstore{x_\Nat,E};\Byt, \callData,\retData, \mu, \Block);\Exec \rar \env':(\Byt, \callData,\retData,\mu,\Block');\Exec
+\ctx\vdash 
+(\sstore{x_\Nat,E};\bytecode,\textit{gas}, r, \memory,\state) 
+\rar 
+(\bytecode,\textit{gas}-\delta-\delta_\mathsf{sw}, r,\memory,\state')
 }\rlab{sstore}
 \end{array}
 $$

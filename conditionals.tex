@@ -4,24 +4,27 @@
 $$
 \begin{array}{c}
 \dfrac{
-\env'=\env\set{\gasspent=\env.\gasspent+\dmr} \quad
-\Byt'' = \left\{\begin{array}{ll}
-\Byt';\Byt &\hbox{if}\ \mu(x_\Bool) \\
-\Byt &\hbox{else}
+s.\code =  \switch{x_\textrm{cond},\bytecode'};\bytecode
+\quad \bytecode'' = \left\{\begin{array}{ll}
+\bytecode  &\hbox{if}\ s.\memory(x_\textrm{cond}) = \z \\
+\bytecode';\bytecode&\hbox{otherwise} \\
 \end{array}\right.
 } 
 {
-\env:(\switch{x_\Bool,\Byt'};\Byt,\callData,\retData, \mu, \Block)\cdot\Exec \rar\env':(\Byt'',\callData, \retData, \mu, \Block)\cdot\Exec
+\ctx \vdash s \rar s\set{
+\gas\mapsto g-\dmr,
+\code\mapsto \bytecode''}
 }\rlab{if}
 \\\\
 \dfrac{
-\env'=\env\set{\gasspent=\env.\gasspent+\dmr} 
-\quad \Byt'' = \left\{\begin{array}{ll}
-\Byt';\while{x_\Bool,\Byt'};\Byt &\hbox{if}\ \mu(x_\Bool) \\
-\Byt &\hbox{else}
-\end{array}\right.} 
+s.\code =  \switch{x_\textrm{cond},\bytecode'};\bytecode
+\quad \bytecode'' = \left\{\begin{array}{ll}
+\bytecode &\hbox{if}\ s.\memory(x_\textrm{cond}) = \z\\
+\bytecode';\while{x_\textrm{cond},\bytecode'};\bytecode &\hbox{otherwise}
+\end{array}\right.
+} 
 {
-\env:(\while{x_\Bool,\Byt'};\Byt,\callData,\retData,\mu, \Block)\cdot\Exec \rar\env':(\Byt'', \callData,\retData, \mu, \Block)\cdot\Exec
+\ctx \vdash s \rar s\set{\gas\mapsto g-\dmr,\code\mapsto \bytecode''}
 }\rlab{while} 
 \end{array}
 $$
