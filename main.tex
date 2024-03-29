@@ -78,6 +78,7 @@
 \def\steps{\textit{Steps}}
 \def\endStep{\mathsf{End}}
 \def\continuation#1{\textit{continuation}(#1)}
+\def\instruction#1{\textit{instruction}(#1)}
 
 \def\Byt{\mathtt{B}}
 
@@ -187,6 +188,8 @@ Each element $\brd[i]$ gives access to the \emph{return data} values of the last
 $\bcd[i]$ gives access to the \emph{call data} values.
 
 We use $\bytecodes$ to denote the set of bytecodes (words recognised by the above grammar).
+
+% \paragraph{Bytecode current instruction} If the bytecode $\bytecode$ is of the form $I;\bytecode'$, then $\instruction{\bytecode} := I$.
 
 % \paragraph{Bytecode continuation} If the bytecode $\bytecode$ is of the form $I;\bytecode'$, then $\continuation{\bytecode} := \bytecode'$.
 

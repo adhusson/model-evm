@@ -20,8 +20,6 @@ Any non-returning final step $s$ reverts $r$, where
 \end{itemize}
 
 \subsubsection{Context nesting}
-% We say that \emph{$\ctx\vdash s$ runs $\bytecode'$ with gas $G$ under $\ctx'$ and continuation $\bytecode$} when $s.\bytecode = B';\bytecode$ and:
-
 We say that \emph{$\ctx\vdash s$ creates $\ctx'\vdash(B',G')| B$} when
 
 $$
@@ -56,6 +54,17 @@ $$
     \end{array}\right.
 \end{array}
 $$
+
+for some $x_\Addr$,\dots,$x_\Nat$, $c$,$a$, and $f$. This definition applies to all (context,step) pairs that create a new call frame, whether through a call or a delegatecall. 
+
+$\ctx'$ is the call context. For a call, it changes the values of $\thisVal$ and $\senderVal$. For a delegatecall, it keeps those of $\ctx$. 
+
+$B'$ is the bytecode of the new call frame and corresponds to the code at the given function ($f$) name at the given address ($a$). 
+
+$G'$ is the gas given for the call. 
+
+$B$ is the continuation bytecode after the call has ended (i.e. the rest of the bytecode after $s$'s call instruction).
+
 \subsubsection{Derivation of a function call}
 
 \begin{table}[ht]
@@ -63,7 +72,7 @@ $$
 \begin{array}{c}
 \dfrac{
     \begin{array}{lll}
-    % \multicolumn{3}{l}{\textrm{$\ctx\vdash s$ runs $\bytecode'$ with gas $G$ under $\ctx'$ and continuation $\bytecode$}}\\
+    % s.\code &=& I;B\\
     \multicolumn{3}{l}{\textrm{$\ctx\vdash s$ creates $\ctx'\vdash (B',G')|B$}}\\
      \mathsf{\ctx'}&\vdash& 
      (\bytecode{}{}',G,[],\zMem,s.\state) \to^* t \nrightarrow\\
