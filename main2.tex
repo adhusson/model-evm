@@ -153,7 +153,7 @@ $C' = (A',D')$ is the contract with domain $\set{\Abi,\store}$ such that $C'(\Ab
 \paragraph{Stores} Contracts use their store (or storage) as long-term memory. A $\store$ is a total mapping from values (representing integers) to values. The store $(2\mapsto v)$ maps $2$ to $v$, and it maps every other integer to $\z$. $\zStore$ is the empty store, it maps every number to $\z$.
 
 \paragraph{Arrays}
-Partial mappings from integers (to anything) are \emph{arrays}. We use arrays to structure definitions. $[]$ is the empty array. For any set $X$, the set of arrays with all elements in $X$ is $\vec X$.
+\emph{Arrays} are partial mappings from integers (to anything) with no hole in the domain of definition. $[]$ is the empty array (aka the function defined nowhere). For any set $X$, the set of arrays with all elements in $X$ is $\vec X$.
 \subparagraph{Examples}
 $a = [3,0,1]$ has domain $\mathbf{3}$. $a(0) = 3$, $a(1) = 0$, $a(2) = 1$.
 
