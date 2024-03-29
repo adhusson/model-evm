@@ -45,10 +45,10 @@ $$
 \hbox{and }
 \left\{
     \begin{array}{lll}
-    \memory(x_\Addr) & = & a \\
-    \memory(x_\Str) & = & f \\
-    \memory(x_i) & = & c[i]\quad \forall i\leq n \\
-    \memory(x_\Nat) & = & G' \\
+    s.\memory(x_\Addr) & = & a \\
+    s.\memory(x_\Str) & = & f \\
+    s.\memory(x_i) & = & c[i]\quad \forall i\leq n \\
+    s.\memory(x_\Nat) & = & G' \\
     \bytecode{}' &=& s.\state(a).\Abi(f)\\
     s.\gas &\geq& G' + \dcl
     \end{array}\right.
