@@ -1,8 +1,10 @@
 # tex output
 *.pdf
-!main.pdf
 *.log
 *.gz
 *.fdb_latexmk
 *.aux
 *.fls
+*.bbl
+*.blg
+*.out
