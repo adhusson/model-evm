@@ -1,15 +1,15 @@
 % Lower the font size for publication but bigger is easier for previewing
 % \documentclass[11pt]{article}
-\documentclass[14pt]{extarticle}
+\documentclass[12pt]{extarticle}
 \usepackage{amsmath, amssymb, mystyle}
 \usepackage{geometry}
 \usepackage{cancel}
 \usepackage{xspace}
 % Remove for publication but no margin is easier for previewing
-\geometry{margin=.1in}
+%\geometry{margin=.1in}
 \begin{document}
 
-\title{A blockchain calculus}
+\title{A EVM-light model of the Mangrove Protocol.}
 \author{A. Husson, J. Krivine}
 \date{}
 \maketitle
@@ -120,6 +120,25 @@
 \def\state{\textit{state}}
 \def\states{\textit{States}}
 
+\section{Introduction}
+This paper models and verifies some core design principles of Mangrove, an order-book based decentralized protocol running on the Ethereum Virtual Machine (EVM). It assumes some familiarity with the Ethereum ecosystem. 
+
+Mangrove is a two sided protocol whose users are called \emph{Takers} on the one hand and \emph{Makers} on the other. Makers are typically arbitrary smart contracts that can promise a certain quantity $N_O$ of \emph{outbound} assets on Mangrove in exchange of $N_I$ \emph{inbound} assets. Assets are assumed to be managed by smart contracts that implement ERC20-like interfaces. These promises are called (maker) \emph{offers}. The ratio $N_O/N_I$ is the (Maker) price that is used to sort offers: on the outbound/inbound offer list, the first and best offer is the one with the lowest price. 
+
+Mangrove presents two main public functions: \texttt{newOffer} and \texttt{marketOrder}. The first one is used by Maker contracts to make a new offer on Mangrove, while the second is called by Takers who wish to swap a certain amount of inbound tokens against as many offers as possible, as long as the average price of the offers comsumed matches a \emph{limit} specified by the taker. Recall that offers are consumed in the order induced by the offer list (from best to worst Maker price).
+
+The innovation of Mangrove relies on its ability to perform calls to arbitrary smart contracts during the execution of the (Taker initiated) market order transaction: each time an offer is matched against a Taker market order, the Maker contract that posted the offer is called with an amount of gas that was specified  when the promise was made. Hence, the main arguments of the \texttt{newOffer} function are:
+$$
+\mathtt{newOffer}(\mathit{outbound}, \mathit{inbound}, \mathit{price}, \mathit{gasreq})
+$$
+where \emph{outbound} and \emph{inbound} are the addresses of the ERC20 that manage respectively the inbound and outbound assets of the offer, \emph{price} is the Maker price at which it is willing to exchange tokens, and \emph{gasreq} is an amount of gas units that the Maker requires to execute its offer when called by Mangrove.
+
+A call to \texttt{marketOrder} has for arguments:
+$$
+\mathtt{marketOrder}(\mathit{outbound}, \mathit{inbound}, \mathit{limit})
+$$
+where \emph{outbound} and \emph{inbound} identifies the traded assets as before, and \emph{limit} is the price limit for this market order.
+
 \section{Terminology}
 
 \subsection{Terminology}
@@ -178,7 +197,7 @@ I & :: =& x:=E \mid \sstore{x_\textrm{loc},E} & \hbox{Assignment} \\
 &&{}\mid \call{x_\textrm{to}, x_\textrm{fn}, x_0, \dots, x_n,x_\textrm{gas}}\\
 &&{}\mid \dcall{x_\textrm{to}, x_\textrm{fn}, x_0, \dots, x_n,x_\textrm{gas}}
  & \hbox{Function calls} \\
-E & ::= & op(x_0,\dots,x_n)\mid \sload{x_\textrm{loc}}\mid\hsh{x} & \hbox{Expression} \\ 
+E & ::= & op(x_0,\dots,x_n)\mid \sload{x_\textrm{loc}}\mid\hsh{x_0,\dots,x_n} & \hbox{Expression} \\ 
 && \mid \gasleftVar \mid \thisVar \mid \mathtt{sender}\mid \brd[i] \mid\bcd[i] 
 \end{array}
 $$
@@ -213,13 +232,13 @@ x_\textrm{gas} := E_\textrm{gas}\\
 \begin{array}{l}
 \texttt{try $a$.$f$\{gas:$E_\textrm{gas}$\}($E_0,\dots,E_n$)}\\
 \texttt{returns($x_0,\dots,x_m$)}\\
-\texttt{\{\bytecode\} catch \{\bytecode'\}}\end{array} &:=& \left\{
+\{\bytecode\ \} \texttt{ catch } \{\bytecode'\} \end{array} &:=& \left\{
     \begin{array}{l}
-        \call{a,f,\vec v,g}; \mathit{success}_\Bool := \brd_0\\
-        \switch{\mathit{success}_\Bool, (y_i:=\brd_{i+1})_{i\leq |\brd|});\bytecode} \\
-        \switch{\neg\mathit{success}_\Bool, \bytecode'}
+        \call{a,f,E_0,\dots,E_n,E_\textrm{gas}}; \\
+        \switch{\brd[0], (y_i:=\brd[i+1])_{i\leq |\brd|});\bytecode} \\
+        \switch{\neg\brd[0], \bytecode'}
     \end{array}\right. \\\\
-z:=x_\Nat[y] &:=& y'_\Nat:=\hsh{y}+x_\Nat; z:=\sload{z_\Nat}
+z:=x_{\rm map}[y_{\rm index}] &:=& z_{\rm loc}:=\hsh{x_{\rm map},y_{\rm index}}; z:=\sload{z_{\rm loc}}
 \end{array}
 $$
 
