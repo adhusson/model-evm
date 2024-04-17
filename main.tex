@@ -1,11 +1,20 @@
 % Lower the font size for publication but bigger is easier for previewing
 % \documentclass[11pt]{article}
 \documentclass[12pt]{extarticle}
-\usepackage{amsmath, amssymb, mystyle}
+\usepackage{amsmath, amsthm, amssymb, mystyle}
 \usepackage{geometry}
+\usepackage{graphicx}
 \usepackage{cancel}
 \usepackage{xspace}
 \usepackage{hyperref}
+
+%\newtheorem{theorem}{Theorem}
+%\newtheorem{definition}{Definition}
+%\newtheorem{example}{Example}
+\newtheorem{proposition}{Proposition}
+
+\newcommand{\propositionautorefname}{Proposition}
+
 % Remove for publication but no margin is easier for previewing
 %\geometry{margin=.1in}
 \begin{document}
@@ -128,29 +137,85 @@ This paper aims at modelling some core design principles of Mangrove, an order-b
 \section{Mangrove}
 
 \subsection{General principle}
-Mangrove \cite{Mangrove} is a two sided protocol whose users are called \emph{Takers} on the one hand and \emph{Makers} on the other. Makers are typically arbitrary smart contracts that can promise a certain quantity $N_O$ of \emph{outbound} assets on Mangrove in exchange of $N_I$ \emph{inbound} assets. Assets are assumed to be managed by smart contracts that implement ERC20-like interfaces \cite{ERC20}. These promises are called (maker) \emph{offers}. The ratio $N_I/N_O$ is the (Maker) price that is used to sort offers: on the outbound/inbound offer list, the first and best offer is the one with the lowest price. The present paper does not address the issue of price representation in the EVM, which has to rely on fixed point arithmetics. We assume here that arbitrary precision floating points can be used.
+Mangrove \cite{Mangrove} is a two sided protocol whose users are called \emph{Takers} on the one hand and \emph{Makers} on the other. Makers are typically arbitrary smart contracts that can promise a certain quantity $N_O$ of \emph{outbound} assets on Mangrove in exchange of $N_I$ \emph{inbound} assets. Assets are assumed to be managed by smart contracts that implement ERC20-like interfaces \cite{ERC20}. These promises are called (maker) \emph{offers} and the \emph{owner} of an offer is the address of the Maker that posted the promise. The ratio $N_I/N_O$ is the (Maker) price that is used to sort offers: on a given outbound/inbound offer list, the first and best offer is the one with the lowest price. The present paper does not address the issue of price representation in the EVM, which has to rely on fixed point arithmetics. We assume here that arbitrary precision floating points can be used.
 
-Mangrove presents two main public functions: \texttt{newOffer} and \texttt{marketOrder}. The first one is used by Maker contracts to make a new offer on Mangrove, while the second is called by Takers who wish to swap a certain amount of inbound tokens against as many offers as possible, as long as the average price of the offers consumed matches a \emph{limit} specified by the taker. Recall that offers are consumed in the order induced by the offer list (from best to worst Maker price).
+Mangrove presents two main public functions: \texttt{newOffer} and \texttt{marketOrder}. The first one is used by Maker contracts to publish a new offer on Mangrove, while the second is called by Takers who wish to swap a certain amount of inbound tokens against as many offers as possible, as long as the average price of the offers consumed matches a \emph{limit} specified by the taker. Recall that offers are consumed in the order induced by the offer list (from best to worst Maker price).
 
 The innovation of Mangrove relies on its ability to perform calls to arbitrary smart contracts during the execution of the (Taker initiated) market order transaction: each time an offer is matched against a Taker market order, the Maker contract that posted the offer is called with an amount of gas that was specified  when the promise was made. Hence, the \texttt{newOffer} function of Mangrove can be modelled as:
 $$
-\mathtt{newOffer}(\mathit{outbound}, \mathit{inbound}, \mathit{price}, \mathit{gasreq})
+\mathtt{newOffer}(\mathit{outbound}, \mathit{inbound}, \mathit{price}, \mathit{gasreq})\ \mathtt{payable}
 $$
-where \emph{outbound} and \emph{inbound} are the addresses of the ERC20 that manage respectively the inbound and outbound assets of the offer, \emph{price} is the Maker price at which it is willing to exchange tokens, and \emph{gasreq} is the amount of gas units that the Maker requires to execute its offer when called by Mangrove. In case two offers have the same price, the one that requires the least gas is considered best in the offer list. In case of strict equality, offers that were inserted first take precedence.
+where \emph{outbound} and \emph{inbound} are the addresses of the ERC20 that manage respectively the inbound and outbound assets of the offer, \emph{price} is the Maker price at which it is willing to exchange tokens, and \emph{gasreq} is the amount of gas units that the Maker requires to execute its offer when called by Mangrove. In case two offers have the same price, the one that requires the least gas is considered best in the offer list. In case of strict equality, offers that were inserted first take precedence. The offer above is \emph{payable}, which is an annotation that refers to the fact that some amount of ether can be transfered by the Maker when the function is called. This amount of ether is called a \emph{provision} and is used by Mangrove to penalise the Maker when its offer fails to deliver (see \autoref{sec:ftd}). The logic of the provision is to ask the Maker to put aside a sufficient amount of ether to cover the cost of the Taker in case the Maker's offer fails to deliver. At worst the gas spent by the offer is \emph{gasreq}, so the provision required by Mangrove is $(\mathit{gasreq}+\emph{gasbase})*\mathit{gasprice}$, where \emph{gasbase} is a protocol constant and \emph{gasprice} is a protocoal variable that covers a reasonable gas price on the chain of deployment. Make sure that the amount of Takers' compensations is adequate is not studied in the present work, however we will be interested in proving that a compensation is indeed sent to the Taker if and only if the Maker's offer is to blame.
 
-A call to Mangrove's \texttt{marketOrder} can be modelled as:
+On the Taker's side, a call to Mangrove's \texttt{marketOrder} can be modelled as:
 $$
-\mathtt{marketOrder}(\mathit{outbound}, \mathit{inbound}, \mathit{limit_{price}}, \mathit{limit_{gasreq}})
+\mathtt{marketOrder}(\mathit{outbound}, \mathit{inbound}, \mathit{outbound\_volume}, \mathit{limit\_price}, \mathit{limit\_gasreq})
 $$
-where \emph{outbound} and \emph{inbound} identifies the traded assets as before. The final arguments $\mathit{limit_{price}}$ and $\mathit{limit_{gasreq}}$ are respectively a price limit for the market order (see \autoref{sec:matching} and a bound on the amount of gas that can be spent on failing offers (see \autoref{sec:ftd}).
+where \emph{outbound} and \emph{inbound} identifies the traded assets, and \emph{outbound\_volume} is the number of inbound assets that the Taker expects for a \emph{complete fill}. A Taker \emph{partial fill} occurs when the Taker receives a volume $v$ of outbound tokens that satisfies $0<v<\mathit{outbound\_volume}$. The final arguments \emph{limit\_price} and \emph{limit\_gasreq} are respectively a price limit for the market order (see \autoref{sec:matching} and a bound on the amount of gas that can be spent on failing offers (see \autoref{sec:ftd}). 
 
 \subsection{Offer execution}\label{sec:matching}
+Suppose a Taker triggers a market order with the call: 
+$$
+\mathtt{mgv.marketOrder}(o,i,V,l_p,l_g)
+$$
+where $\mathtt{mgv}$ is the address of a deployed Mangrove contract. The protocol will select the current best promise of the $(o,i)$ offer list. If the price of this offer is less or equal to $l_p$, Mangrove attempts to call the offer owner on a reserved \texttt{makerExecute} function with as many gas unit as the offer requires when posted. After a successful termination of \texttt{makerExecute} (i.e with no revert), Mangrove will attempt to transfer the promised outbound tokens from the Maker contract to the taker, using the ERC20 public function \texttt{transferFrom}. If the Taker has enough gas and the amount of received outbound tokens is less than $V$ (which includes the case where no outbound tokens were received), Mangrove will iterate the process on the new best offer of the list if its price is lower than $l_p$. If no such offer exists, Mangrove returns the partial fill to the Taker.  
 
-Mangrove maps every offer, on an outbound/inbound market, to the address of the Maker that posted it. When a Taker triggers a market order transaction at at limit price $p$, each offer is 
+Notice that the Maker contract is given an amount of gas to perform \emph{arbitrary} calls, which may be used to fetch the promised outbound tokens anywhere on chain, decide to renege on the trade (see \autoref{sec:ftd}), or actually decide to try reentrant attack on the protocol (see \autoref{sec:attacks}). The \autoref{fig:MarketOrder} shows an example of a market order transaction.
+%%
+\FIG{14.5cm}{MarketOrder}{
+(1) A market order on Mangrove initiated by Taker. (2) Mangrove transfers inbound asset from Taker to itself via a call to the {\tt transferFrom} function of the ERC20 in charge of the inbound asset. (3) The asset is then transferred to Maker 1 which owns the best offer. (4) Mangrove calls {\tt makerExecute} at the address of Maker 1 with the volume required by Taker and a recap of the price agreed by Maker 1. (A) Maker 1 contract has now \emph{gasreq} (of the offer) gas units to execute arbitrarily. (5) when {\tt makerExecute} returns, Mangrove transfers the promised outbound tokens via a call to {\tt transferFrom} on the ERC20 managing the outbound token. (6-9) Mangrove executes the same sequence on the offer of Maker 2. (10) At the end of the market order the sum of collected outbound assets are being sent to Taker as well as any left over inbound assets.
+}
+%%
 
 \subsection{Offers that fail to deliver}\label{sec:ftd}
 
+Because Maker contracts are not whitelisted, the Mangrove protocol needs to take care of \emph{fail to deliver} scenarios.
+An offer owned by a Maker contract \texttt{mkr} fails to deliver if any on the following occurs:
+\begin{enumerate}
+\item Mangrove fails to transfer the Taker's inbound tokens to \texttt{mkr}. \label{enu:blacklisted}
+\item The call to \texttt{mkr.makerExecute} reverts. \label{enu:reverts}
+\item The call to \texttt{mkr.makerExecute} returns but Mangrove fails to transfer the promised assets from \texttt{mkr} to itself. \label{enu:allowance}
+\end{enumerate}
+
+Case~\ref{enu:blacklisted} occurs typically when the address \texttt{mkr} is blacklisted by the ERC20 in charge of maintaining the inbound token balance. Case~\ref{enu:reverts} occurs for many reasons, including reverting on purpose in order to renege on trade. Another typical case is \texttt{mkr} reverting with an \emph{out of gas} exception, which occurs when the \emph{gasreq} argument of \texttt{newOffer} was underestimated by the Maker. Case~\ref{enu:allowance} occurs when \texttt{mkr} has not approved Mangrove to call \texttt{transferFrom} on the ERC20 contract managing the outbound token. It may also occur if the \texttt{mkr} contract does not have the promised funds.
+
+Importantly, when an offer FTD's Mangrove is able to penalise its owner using the \emph{provision} that was deposited by the Maker thanks to the payable \texttt{newOffer} function.
+
+\subsection{Attack vectors}\label{sec:attacks}
+
+We are interested in showing that Mangrove's protocol effectively shields users from three important attack vectors:
+
+\paragraph{Arbitrage}
+When called by Mangrove on {\tt makerExecute}, a Maker contract is given a certain amount of gas units to run (see (A) and (B) sections of \autoref{fig:MarketOrder}). This amount is specified by the Maker with the \emph{gasreq} argument of the {\tt newOffer} function. We wish to guarantee that the Maker cannot utilise this gas to \emph{arbitrage} the trade: if Taker is willing to buy at price $p$ and Maker made its offer at price $p'<p$, Maker could revert on the current offer (sending a fraction $f$ of its provision to the Taker in compensation) and place a new offer on the list (with a reentrant call to {\tt newOffer}) with a new price $p''>p'$ and lower than the next best price on the offer list. This is guaranteed to be profitable for Maker if $f$ is small enough in front of selling a volume $V$ at price $p''$ instead of $p'$.
+\begin{proposition}[No Taker side leakage]
+During the execution of {\rm\texttt{makerExecute}}, the Maker contract cannot infer an upper bound on the limit price of the Taker's market order.
+\end{proposition}
+
+\begin{proposition}[No Maker side leakage]
+During the execution of {\rm\texttt{makerExecute}}, offers from the same offer list are read and write locked.
+\end{proposition}
+
+\paragraph{Market clogging}
+This potential issue is in the category of griefing attacks, designed to harm protocol usability without immediate payoff for the attacker. The idea is to place offers so that any Takers' market orders end up reverting or unfilled (without the appropriate compensation).    
+
+\begin{proposition}[Progress]
+For all offer list state, there exists a \emph{productive} market order, i.e. that is either a partial fill or returns a compensation for the Taker.
+\end{proposition}
+
+\paragraph{Memory expansion attack}
+According to the EVM yellow paper \cite{Ethereum}, allocating new elements to a smart contract's memory has a cost that depends on the size of the already allocated memory. Quoting the formula:
+$$
+C_{\it mem}(a) := G_{\it memory}*a+\floor{\dfrac{a^2}{512}}
+$$
+where $G_{\it memory}$ is a constant, and $a$ is the number of memory words (of 32 bytes) allocated by the contract. Notice the cost of allocating a new word has a quadratic term beyond 512 words. During a market order, Mangrove is performing several calls to the Maker contracts whose offers are matched by the taker order. Each call is performed in a new context with a fresh memory, but when a call returns, one needs to make sure that the memory of Mangrove does not grow indefinitely. In particular care must be taken that a Maker cannot induce an uncontrolled growth of Mangrove's memory using polluted return data. 
+
+\begin{proposition}[No memory leakage]
+The memory size of Mangrove is bounded by a constant at all time of a market order execution. This constant is independent of the offer list state.
+\end{proposition}
+
 \section{EVM-light}
+We proceed with the formal presentation of an EVM-light, which will serve as an operational semantics for smart contracts models we wish to analyse. This lightweight formalism makes several important simplifications with respect to the EVM. Those simplifications retain enough of the EVM semantics to be able to give value to the verification of the propositions listed in \autoref{sec:attacks}, while abstracting away the complex machinery of the EVM that would be irrelevant for the present study.
+
 
 \subsection{Terminology}
 \paragraph{Values and variables}

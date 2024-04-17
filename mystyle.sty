@@ -4,7 +4,7 @@
 \def\mit#1{\mathit{#1}}
 
 %Basics
-\def\set#1{\{#1\}}
+\def\set#1{\left\{#1\right\}}
 \def\bs{\backslash}
 
 %Domains
@@ -31,3 +31,15 @@
 %math 
 \def\tuple#1{\langle{#1}\rangle}
 \def\eqdef{\overset{\Delta}{=}}
+\def\floor#1{\left\lfloor#1\right\rfloor}
+
+%misc
+\def\FIG#1#2#3{
+	\begin{figure}
+	\begin{center}
+	\includegraphics[width=#1]{images/#2.pdf}
+	\caption{\small #3}\label{fig:#2}
+	\end{center}
+	\end{figure}
+}
+
