@@ -183,9 +183,24 @@ Importantly, when an offer FTD's Mangrove is able to penalise its owner using th
 
 \subsection{Attack vectors}\label{sec:attacks}
 
-We are interested in showing that Mangrove's protocol effectively shields users from three important attack vectors:
+We are interested in showing that Mangrove's protocol effectively shields users from several important attack vectors:
 
-\paragraph{Arbitrage}
+\paragraph{Non compliance with Maker offers.}
+Maker contracts that are called by Mangrove might not have full knowledge about the price and volume that they promised when posting their offers. Indeed recording such values would incur important gas cost, and Maker contracts should be able to trust Mangrove's data when called on \texttt{makerExecute}. 
+
+Similarly, Maker contracts that fail to deliver will compensate the Taker of the loss of gas. This implies that running out of gas during maker execute is always blaming the Maker. 
+
+\begin{proposition}[Compliance]
+A Maker is called by Mangrove on {\rm\texttt{maker\-Execute}} if and only if:
+\begin{enumerate}
+\item The call occurs within a market order
+\item The call has a gas limit set to the offer's \emph{gasreq}.
+\item The required volume is less or equal to the volume the Maker promised to send.
+\item The price agreed by the taker is exactly the price at which the Maker promised to swap. 
+\end{enumerate}
+\end{proposition}
+
+\paragraph{Arbitrage.}
 When called by Mangrove on {\tt makerExecute}, a Maker contract is given a certain amount of gas units to run (see (A) and (B) sections of \autoref{fig:MarketOrder}). This amount is specified by the Maker with the \emph{gasreq} argument of the {\tt newOffer} function. We wish to guarantee that the Maker cannot utilise this gas to \emph{arbitrage} the trade: if Taker is willing to buy at price $p$ and Maker made its offer at price $p'<p$, Maker could revert on the current offer (sending a fraction $f$ of its provision to the Taker in compensation) and place a new offer on the list (with a reentrant call to {\tt newOffer}) with a new price $p''>p'$ and lower than the next best price on the offer list. This is guaranteed to be profitable for Maker if $f$ is small enough in front of selling a volume $V$ at price $p''$ instead of $p'$.
 \begin{proposition}[No Taker side leakage]
 During the execution of {\rm\texttt{makerExecute}}, the Maker contract cannot infer an upper bound on the limit price of the Taker's market order.
@@ -202,7 +217,7 @@ This potential issue is in the category of griefing attacks, designed to harm pr
 For all offer list state, there exists a \emph{productive} market order, i.e. that is either a partial fill or returns a compensation for the Taker.
 \end{proposition}
 
-\paragraph{Memory expansion attack}
+\paragraph{Memory expansion attack.}
 According to the EVM yellow paper \cite{Ethereum}, allocating new elements to a smart contract's memory has a cost that depends on the size of the already allocated memory. Quoting the formula:
 $$
 C_{\it mem}(a) := G_{\it memory}*a+\floor{\dfrac{a^2}{512}}
