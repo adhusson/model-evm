@@ -311,7 +311,7 @@ $\bcd[i]$ gives access to the \emph{call data} values. By convention $\brd[0]$ c
 
 We use $\bytecodes$ to denote the set of bytecodes (words recognised by the above grammar).
 
-\subsection{Solidity light}
+\subsection{Solidity light}\label{sec:solidity-light}
 
 We can define some basic solidity constructs as macros (introduced variables are fresh) that we will use to model smart contracts.
 First, opcodes that require variable arguments can be relaxed to expect general expressions:
@@ -355,7 +355,7 @@ A smart contract $\Ctr$ is a tuple of the form $$\Ctr:=(\Abi\in \Str\to \bytecod
 
 A \emph{(blockchain) state} is a mapping $\state\in \Addr\to\contracts$. The set of all possible states is $\states$.
 
-\begin{example}[ERC20]
+\begin{example}[ERC20]\label{ex:ERC20}
 A custodian (smart) contract of type ERC20 is a contract $\mathsf{ERC20}$ with:
 $$
 \mathsf{ERC20}.\Abi := \left\{
@@ -378,8 +378,9 @@ $$
 \dots
 \end{array}\right.
 $$
-
 \end{example}
+
+In \autoref{ex:ERC20}, the \textit{balance\_map}, in the contract's storage, associates addresses to integers with $\mathit{balance\_map}[a]=n$ indicating that address $a$ owns $n$ tokens managed by this contract (see \autoref{sec:solidity-light} for the interpretation of a mapping in storage).
 
 \section{Operational semantics}
 
