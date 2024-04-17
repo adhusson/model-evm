@@ -207,7 +207,7 @@ According to the EVM yellow paper \cite{Ethereum}, allocating new elements to a 
 $$
 C_{\it mem}(a) := G_{\it memory}*a+\floor{\dfrac{a^2}{512}}
 $$
-where $G_{\it memory}$ is a constant, and $a$ is the number of memory words (of 32 bytes) allocated by the contract. Notice the cost of allocating a new word has a quadratic term beyond 512 words. During a market order, Mangrove is performing several calls to the Maker contracts whose offers are matched by the taker order. Each call is performed in a new context with a fresh memory, but when a call returns, one needs to make sure that the memory of Mangrove does not grow indefinitely. In particular care must be taken that a Maker cannot induce an uncontrolled growth of Mangrove's memory using polluted return data. 
+where $G_{\it memory}$ is a constant, and $a$ is the number of memory words (of 32 bytes) allocated by the contract. Notice the cost of allocating a new word has a quadratic term beyond 22 words. During a market order, Mangrove is performing several calls to the Maker contracts whose offers are matched by the taker order. Each call is performed in a new context with a fresh memory, but when a call returns, one needs to make sure that the memory of Mangrove does not grow indefinitely. In particular care must be taken that a Maker cannot induce an uncontrolled growth of Mangrove's memory using polluted return data. 
 
 \begin{proposition}[No memory leakage]
 The memory size of Mangrove is bounded by a constant at all time of a market order execution. This constant is independent of the offer list state.
