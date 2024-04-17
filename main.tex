@@ -12,8 +12,10 @@
 %\newtheorem{definition}{Definition}
 %\newtheorem{example}{Example}
 \newtheorem{proposition}{Proposition}
+\newtheorem{example}{Example}
 
 \newcommand{\propositionautorefname}{Proposition}
+\newcommand{\exampleautorefname}{Example}
 
 % Remove for publication but no margin is easier for previewing
 %\geometry{margin=.1in}
@@ -44,6 +46,7 @@
 \def\Bool{\mathbb{B}}
 \def\Addr{\mathbb{A}}
 \def\Str{\mathbb{S}}
+\def\str#1{\hbox{\rm\texttt{"#1"}}}
 \def\ary#1{\left[{#1}\right]}
 \def\z{\mathbf{0}}
 \def\zMem{\z_\memory}
@@ -233,11 +236,10 @@ The memory size of Mangrove is bounded by a constant at all time of a market ord
 \end{proposition}
 
 \section{EVM-light}
-We proceed with the formal presentation of an EVM-light, which will serve as an operational semantics for smart contracts models we wish to analyse. This lightweight formalism makes several important simplifications with respect to the EVM. Those simplifications retain enough of the EVM semantics to be able to give value to the verification of the propositions listed in \autoref{sec:attacks}, while abstracting away the complex machinery of the EVM that would be irrelevant for the present study.
+We proceed with the formal presentation of an EVM-light, which will serve as an operational semantics for smart contracts models we wish to analyse. This lightweight formalism makes several important simplifications with respect to the EVM. Those simplifications retain enough of the EVM semantics to be able to give value to the verification of the propositions listed in \autoref{sec:attacks}, while abstracting away the complex machinery of the EVM that would be irrelevant for the present study. In particular our EVM light has a very loose and flexible interpretation of values, disregarding size of elements stored in memory, which are normally constrained to EVM words of 32 bytes. So the present formalism cannot be used to study overflow issues. We also do not model stack allocation and consider contracts to be solely equipped with a memory heap on which to allocate variables. 
 
 
 \subsection{Terminology}
-\paragraph{Values and variables}
 We consider a finite set of values $\vals$ with a distinguished zero value $\z$. All common types (strings, numbers, booleans, addresses) are assumed to be transparently encoded to and from this value set (so for instance, any string is a value and any value is a string).
 
 For convenience, we can talk about the set of strings $\Str$, of addresses $\Addr$, of unsigned integers $\Uint$, or of booleans $\Bool$. But we are really talking about the set of values.
@@ -255,32 +257,38 @@ A \emph{memory} or $\memory$ is a total mapping from names to values. The memory
 \paragraph{Tuples}
 We use tuples everywhere to structure definitions. A \emph{tuple} is a partial mapping from names (to anything). $()$ is the empty tuple.
 
-\subparagraph{Example} 
+\begin{example}
 We will later introduce \emph{contracts} as tuples of the form $(\Abi\in\Str\rightarrow\bytecodes,\store\in\Nat\rightarrow\vals)$. 
 This means that all contracts have domain $\set{\Abi,\store}\subseteq\vars$, that they all map $\Abi$ to strings-to-bytecode mappings, and that they all map $\store$ to integers-to-value mappings.
 Given concrete values $A$ and $S$, $C = (\Abi\mapsto A,\store\mapsto D)$ is the contract such that $C(\Abi) = A$ and $C(\store) = D$
+\end{example}
 
-\subparagraph{}
 When convenient the name of a tuple member is omitted and its position implicitly denotes the corresponding name. 
-\subparagraph{Example}
+\begin{example}
 $C' = (A',D')$ is the contract with domain $\set{\Abi,\store}$ such that $C'(\Abi) = A'$ and $C'(\store) = D'$
+\end{example}
 
 \paragraph{Stores} Contracts use their store (or storage) as long-term memory. A $\store$ is a total mapping from values (representing integers) to values. The store $(2\mapsto v)$ maps $2$ to $v$, and it maps every other integer to $\z$. $\zStore$ is the empty store, it maps every number to $\z$.
 
 \paragraph{Arrays}
 \emph{Arrays} are partial mappings from integers (to anything) with no hole in the domain of definition. $[]$ is the empty array (aka the function defined nowhere). For any set $X$, the set of arrays with all elements in $X$ is $\vec X$.
-\subparagraph{Examples}
+\begin{example}
 $a = [3,0,1]$ has domain $\mathbf{3}$. $a(0) = 3$, $a(1) = 0$, $a(2) = 1$.
+\end{example}
 
 \def\Dom{\textrm{Dom}}
 \paragraph{Update syntax}
 A mapping can be defined as an update of an existing mapping. If a mapping $m$ is defined on $x$ then $m' = m\set{x\mapsto v}$ is equal to $m$, except that $m'(x) =v$. The notation is extended to more than one element.
 
-\subparagraph{Example} $C\set{\store\mapsto D'}$ is the contract $(\Abi\mapsto A,\store\mapsto D')$. $a\set{1\mapsto10}$ is the array $[3,10,1]$.
+\begin{example} 
+$C\set{\store\mapsto D'}$ is the contract $(\Abi\mapsto A,\store\mapsto D')$. $a\set{1\mapsto10}$ is the array $[3,10,1]$.
+\end{example}
 
-\subparagraph{Nested update syntax} If $t$ is a tuple and $t.f$ is a mapping, then $t\set{f\set{\dots}} = t\set{f\mapsto t.f\set{\dots}}$.
+\paragraph{Nested update syntax} If $t$ is a tuple and $t.f$ is a mapping, then $t\set{f\set{\dots}} = t\set{f\mapsto t.f\set{\dots}}$.
 
-\subparagraph{Example} If $\state$ is a tuple, $\state.\textit{address}$ is a tuple, and $\state.\textit{address}.\store$ is a store, then $\state\set{\textit{address}\set{\store\set{3 \mapsto 7}}}$ is equal to $\state$ except that $\state.\textit{address}.\store(3) = 7$.
+\begin{example} If $\state$ is a tuple, $\state.\textit{address}$ is a tuple, and $\state.\textit{address}.\store$ is a store, then $\state\set{\textit{address}\set{\store\set{3 \mapsto 7}}}$ is equal to $\state$ except that:
+$$\state.\textit{address}.\store(3) = 7$$
+\end{example}
 
 \subsection{Bytecodes}
 A \emph{bytecode} $\bytecode$ is a stack of \emph{instructions} $I$, built using the grammar (for all $n$):
@@ -299,25 +307,29 @@ $$
 where $op:\vals^n\to \vals$ denote any operation on values (constant values are for $n=0$), $\hsh{}$ gives access to a native hash function that maps values to integers, 
 $\gasleftVar$, $\thisVar$ and $\senderVar$ give respectively access to the amount of gas unit left, the address of the execution runner and the address of the last caller of this execution. 
 Each element $\brd[i]$ gives access to the \emph{return data} values of the last call and 
-$\bcd[i]$ gives access to the \emph{call data} values.
+$\bcd[i]$ gives access to the \emph{call data} values. By convention $\brd[0]$ contains the return status (a boolean) of the last function call\footnote{In the EVM, the return status is stored on top of the stack.}.
 
 We use $\bytecodes$ to denote the set of bytecodes (words recognised by the above grammar).
 
-% \paragraph{Bytecode current instruction} If the bytecode $\bytecode$ is of the form $I;\bytecode'$, then $\instruction{\bytecode} := I$.
+\subsection{Solidity light}
 
-% \paragraph{Bytecode continuation} If the bytecode $\bytecode$ is of the form $I;\bytecode'$, then $\continuation{\bytecode} := \bytecode'$.
-
-
-\paragraph{Example} We can define some basic solidity constructs as macros (introduced variables are fresh):
+We can define some basic solidity constructs as macros (introduced variables are fresh) that we will use to model smart contracts.
+First, opcodes that require variable arguments can be relaxed to expect general expressions:
 $$ \begin{array} {lll}
-\switch{E,B} &:=& x_\textrm{cond} := E; \switch{x_\textrm{cond},B}\\\\
-\dots &:=& \dots\\\\
-\dcall{E_\textrm{to},E_{\textrm{fn}},E_0,\dots,E_n,E_{\textrm{gas}}} &:=& \left\{
+\mathsf{while}/\switch{E,B} &:=& x_\textrm{cond} := E; \mathsf{while}/\switch{x_\textrm{cond},B}\\\\
+\mathsf{revert}/\return{E_0,\dots,E_n} &:=& x_0:=E_0; \dots; x_n:=E_n;\\
+&& \mathsf{revert}/\return{x_0,\dots,x_n}\\\\
+\mathsf{(d)}\call{E_\textrm{to},E_{\textrm{fn}},E_0,\dots,E_n,E_{\textrm{gas}}} &:=& \left\{
 \begin{array}{l}
 x_\textrm{to} := E_\textrm{to};x_\textrm{fn} := E_\textrm{fn}; \\
 x_0 := E_0; \dots; x_n := E_n; \\
 x_\textrm{gas} := E_\textrm{gas}\\
-\dcall{x_\textrm{to},x_\textrm{fn},x_0,\dots,x_n,x_\textrm{gas}}\\\end{array}\right.\\\\
+\mathsf{(d)}\call{x_\textrm{to},x_\textrm{fn},x_0,\dots,x_n,x_\textrm{gas}}\\\end{array}\right.
+\end{array}
+$$
+
+We can also model core solidity primitives:
+$$\begin{array}{lll}
 \require(E_\textrm{cond},E_\textrm{reason}) &:=& \switch{\neg E_\textrm{cond},\revert{E_\textrm{reason}}}\\\\
 \texttt{$a$.$f$\{gas:$E_\textrm{gas}$\}($E_0,\dots,E_n$)} &:=& \left\{
 \begin{array}{l}
@@ -330,10 +342,11 @@ x_\textrm{gas} := E_\textrm{gas}\\
 \{\bytecode\ \} \texttt{ catch } \{\bytecode'\} \end{array} &:=& \left\{
     \begin{array}{l}
         \call{a,f,E_0,\dots,E_n,E_\textrm{gas}}; \\
-        \switch{\brd[0], (y_i:=\brd[i+1])_{i\leq |\brd|});\bytecode} \\
+        \switch{\brd[0], (x_i:=\brd[i+1])_{i\leq |\brd|});\bytecode} \\
         \switch{\neg\brd[0], \bytecode'}
     \end{array}\right. \\\\
-z:=x_{\rm map}[y_{\rm index}] &:=& z_{\rm loc}:=\hsh{x_{\rm map},y_{\rm index}}; z:=\sload{z_{\rm loc}}
+z:=x_{\rm map}[y_{\rm index}] &:=& z_{\rm loc}:=\hsh{x_{\rm map},y_{\rm index}}; z:=\sload{z_{\rm loc}}\\\\
+x_{\rm map}[y_{\rm index}]:=E &:=& z_{\rm loc}:=\hsh{x_{\rm map},y_{\rm index}}; \sstore{z_{\rm loc},E}
 \end{array}
 $$
 
@@ -341,6 +354,32 @@ $$
 A smart contract $\Ctr$ is a tuple of the form $$\Ctr:=(\Abi\in \Str\to \bytecodes, \store\in \Nat\to \vals)$$ where $\Abi$ is the contract's \emph{(application binary) interface}, mapping a function name to its bytecode. The contract storage maps positions to values in a persistent manner. We use $\contracts$ to denote the set of possible smart contracts.
 
 A \emph{(blockchain) state} is a mapping $\state\in \Addr\to\contracts$. The set of all possible states is $\states$.
+
+\begin{example}[ERC20]
+A custodian (smart) contract of type ERC20 is a contract $\mathsf{ERC20}$ with:
+$$
+\mathsf{ERC20}.\Abi := \left\{
+\begin{array}{lll}
+\str{transfer} &\mapsto& B_{\textrm{transfer}}\\
+\str{transferFrom} &\mapsto& B_{\textrm{transferFrom}}\\
+\str{approve}&\mapsto& B_{\textrm{approve}} \\
+\str{allowance}&\mapsto& B_{\textrm{allowance}} \\
+\str{balanceOf}&\mapsto& B_{\textrm{balanceOf}}
+\end{array}\right.
+$$
+and with typical store:
+$$
+\mathsf{ERC20}.\store := \left\{
+\begin{array}{lll}
+0 &\mapsto& \textrm{balance\_map}\in \Nat \\
+1 &\mapsto& \textrm{approval\_map}\in \Nat \\
+2 & \mapsto& \textrm{name}\in \Str \\
+3 & \mapsto& \textrm{totalSupply}\in\Nat \\
+\dots
+\end{array}\right.
+$$
+
+\end{example}
 
 \section{Operational semantics}
 
@@ -373,12 +412,12 @@ $$ \begin{array} {lll}
 
 
 \subsection{Checking gas limit}
-An execution step is out of gas if it has less than $0$ gas left. Derivation rules $\rar$ below don't check gas, but the steps are only valid ($\rightarrow$) if the step has some gas left. In the derivation below, \texttt{"out of gas"} is a value that represents the string \emph{out of gas}.
+An execution step is out of gas if it has less than $0$ gas left. Derivation rules $\rar$ below don't check gas, but the steps are only valid ($\rightarrow$) if the step has some gas left. In the derivation below, $\str{out of gas}$ is a value that represents the string \emph{out of gas}.
 \begin{equation}
 \dfrac{
 \ctx\vdash\step\rar \step' \quad \step'.\gas < 0
 }{
-\ctx\vdash\step\to \step\set{\bytecode\mapsto \revert{\texttt{"out of gas"}};\zBytecode}
+\ctx\vdash\step\to \step\set{\bytecode\mapsto \revert{\str{out of gas}};\zBytecode}
 }
 \end{equation}
 
