@@ -200,6 +200,10 @@ A Maker is called by Mangrove on {\rm\texttt{maker\-Execute}} if and only if:
 \end{enumerate}
 \end{proposition}
 
+\begin{proposition}[Justice]
+Reverts that occur outside a call to {\rm\texttt{makerExecute}} make the market order transaction revert.
+\end{proposition}
+
 \paragraph{Arbitrage.}
 When called by Mangrove on {\tt makerExecute}, a Maker contract is given a certain amount of gas units to run (see (A) and (B) sections of \autoref{fig:MarketOrder}). This amount is specified by the Maker with the \emph{gasreq} argument of the {\tt newOffer} function. We wish to guarantee that the Maker cannot utilise this gas to \emph{arbitrage} the trade: if Taker is willing to buy at price $p$ and Maker made its offer at price $p'<p$, Maker could revert on the current offer (sending a fraction $f$ of its provision to the Taker in compensation) and place a new offer on the list (with a reentrant call to {\tt newOffer}) with a new price $p''>p'$ and lower than the next best price on the offer list. This is guaranteed to be profitable for Maker if $f$ is small enough in front of selling a volume $V$ at price $p''$ instead of $p'$.
 \begin{proposition}[No Taker side leakage]
