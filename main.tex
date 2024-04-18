@@ -115,6 +115,7 @@
 \def\denv{\delta_{\mathsf{env}}}
 \def\dcd{\delta_{\mathsf{dcd}}}
 \def\drd{\delta_{\mathsf{drd}}}
+\def\dhsh{\delta_{\mathsf{hsh}}}
 
 \def\OOG{\mathsf{OOG}}
 
@@ -236,7 +237,7 @@ The memory size of Mangrove is bounded by a constant at all time of a market ord
 \end{proposition}
 
 \section{EVM-light}
-We proceed with the formal presentation of an EVM-light, which will serve as an operational semantics for smart contracts models we wish to analyse. This lightweight formalism makes several important simplifications with respect to the EVM. Those simplifications retain enough of the EVM semantics to be able to give value to the verification of the propositions listed in \autoref{sec:attacks}, while abstracting away the complex machinery of the EVM that would be irrelevant for the present study. In particular our EVM light has a very loose and flexible interpretation of values, disregarding size of elements stored in memory, which are normally constrained to EVM words of 32 bytes. So the present formalism cannot be used to study overflow issues. We also do not model stack allocation and consider contracts to be solely equipped with a memory heap on which to allocate variables. 
+We proceed with the formal presentation of an EVM-light, which will serve as an operational semantics for smart contracts models we wish to analyse. This lightweight formalism makes several important simplifications with respect to the EVM. Those simplifications retain enough of the EVM semantics to be able to give value to the verification of the propositions listed in \autoref{sec:attacks}, while abstracting away the complex machinery of the EVM that would be irrelevant for the present study. In particular our EVM light has a very loose and flexible interpretation of values, disregarding size of elements stored in memory, which are normally constrained to EVM words of 32 bytes. So the present formalism cannot be used to study overflow issues. We also do not model stack allocation and consider contracts to be solely equipped with a memory heap on which to allocate variables. An additional important simplification is that we do not consider native token transfer and assume all payments to be made with ERC20 compliant custodian contracts.
 
 
 \subsection{Terminology}
@@ -311,45 +312,6 @@ $\bcd[i]$ gives access to the \emph{call data} values. By convention $\brd[0]$ c
 
 We use $\bytecodes$ to denote the set of bytecodes (words recognised by the above grammar).
 
-\subsection{Solidity light}\label{sec:solidity-light}
-
-We can define some basic solidity constructs as macros (introduced variables are fresh) that we will use to model smart contracts.
-First, opcodes that require variable arguments can be relaxed to expect general expressions:
-$$ \begin{array} {lll}
-\mathsf{while}/\switch{E,B} &:=& x_\textrm{cond} := E; \mathsf{while}/\switch{x_\textrm{cond},B}\\\\
-\mathsf{revert}/\return{E_0,\dots,E_n} &:=& x_0:=E_0; \dots; x_n:=E_n;\\
-&& \mathsf{revert}/\return{x_0,\dots,x_n}\\\\
-\mathsf{(d)}\call{E_\textrm{to},E_{\textrm{fn}},E_0,\dots,E_n,E_{\textrm{gas}}} &:=& \left\{
-\begin{array}{l}
-x_\textrm{to} := E_\textrm{to};x_\textrm{fn} := E_\textrm{fn}; \\
-x_0 := E_0; \dots; x_n := E_n; \\
-x_\textrm{gas} := E_\textrm{gas}\\
-\mathsf{(d)}\call{x_\textrm{to},x_\textrm{fn},x_0,\dots,x_n,x_\textrm{gas}}\\\end{array}\right.
-\end{array}
-$$
-
-We can also model core solidity primitives:
-$$\begin{array}{lll}
-\require(E_\textrm{cond},E_\textrm{reason}) &:=& \switch{\neg E_\textrm{cond},\revert{E_\textrm{reason}}}\\\\
-\texttt{$a$.$f$\{gas:$E_\textrm{gas}$\}($E_0,\dots,E_n$)} &:=& \left\{
-\begin{array}{l}
-    \call{a,f,E_0,\dots,E_n,E_\textrm{gas}}; \\
-    \require(\brd[0],\brd[1])
-\end{array}\right. \\\\
-\begin{array}{l}
-\texttt{try $a$.$f$\{gas:$E_\textrm{gas}$\}($E_0,\dots,E_n$)}\\
-\texttt{returns($x_0,\dots,x_m$)}\\
-\{\bytecode\ \} \texttt{ catch } \{\bytecode'\} \end{array} &:=& \left\{
-    \begin{array}{l}
-        \call{a,f,E_0,\dots,E_n,E_\textrm{gas}}; \\
-        \switch{\brd[0], (x_i:=\brd[i+1])_{i\leq |\brd|});\bytecode} \\
-        \switch{\neg\brd[0], \bytecode'}
-    \end{array}\right. \\\\
-z:=x_{\rm map}[y_{\rm index}] &:=& z_{\rm loc}:=\hsh{x_{\rm map},y_{\rm index}}; z:=\sload{z_{\rm loc}}\\\\
-x_{\rm map}[y_{\rm index}]:=E &:=& z_{\rm loc}:=\hsh{x_{\rm map},y_{\rm index}}; \sstore{z_{\rm loc},E}
-\end{array}
-$$
-
 \subsection{Smart contracts}
 A smart contract $\Ctr$ is a tuple of the form $$\Ctr:=(\Abi\in \Str\to \bytecodes, \store\in \Nat\to \vals)$$ where $\Abi$ is the contract's \emph{(application binary) interface}, mapping a function name to its bytecode. The contract storage maps positions to values in a persistent manner. We use $\contracts$ to denote the set of possible smart contracts.
 
@@ -360,6 +322,7 @@ A custodian (smart) contract of type ERC20 is a contract $\mathsf{ERC20}$ with:
 $$
 \mathsf{ERC20}.\Abi := \left\{
 \begin{array}{lll}
+\str{name} & \mapsto & \return{``token\_name"} \\
 \str{transfer} &\mapsto& B_{\textrm{transfer}}\\
 \str{transferFrom} &\mapsto& B_{\textrm{transferFrom}}\\
 \str{approve}&\mapsto& B_{\textrm{approve}} \\
@@ -367,20 +330,19 @@ $$
 \str{balanceOf}&\mapsto& B_{\textrm{balanceOf}}
 \end{array}\right.
 $$
-and with typical store:
+and with store:
 $$
 \mathsf{ERC20}.\store := \left\{
 \begin{array}{lll}
-0 &\mapsto& \textrm{balance\_map}\in \Nat \\
-1 &\mapsto& \textrm{approval\_map}\in \Nat \\
-2 & \mapsto& \textrm{name}\in \Str \\
-3 & \mapsto& \textrm{totalSupply}\in\Nat \\
+x_0 &\mapsto& \textrm{balance\_map}\in \Nat \\
+x_1 &\mapsto& \textrm{approval\_map}\in \Nat \\
+x_2 & \mapsto& \textrm{totalSupply}\in\Nat \\
 \dots
 \end{array}\right.
 $$
 \end{example}
 
-In \autoref{ex:ERC20}, the \textit{balance\_map}, in the contract's storage, associates addresses to integers with $\mathit{balance\_map}[a]=n$ indicating that address $a$ owns $n$ tokens managed by this contract (see \autoref{sec:solidity-light} for the interpretation of a mapping in storage).
+In \autoref{ex:ERC20}, the \textit{balance\_map}, in the contract's storage, associates addresses to integers with $x_0[a]=n$ indicating that address $a$ owns $n$ tokens managed by this contract (see \autoref{sec:solidity-light} for the interpretation of a mapping in storage). The \textit{approval\_map} associates fund owner addresses to spender addresses and their allowance, so $x_1[\mathit{owner}][\mathit{spender}]=n$ indicates that the address $\mathit{spender}$ is allowed to transfer up to $n$ tokens  of \textit{owner} to an arbitrary address, using the \texttt{transferFrom} function of the ERC20's interface.
 
 \section{Operational semantics}
 
@@ -410,8 +372,6 @@ $$ \begin{array} {lll}
 \step(\tx)&:=& \state \mapsto (\state(\tx.\toVal).\Abi(\tx.\fnVal),\tx.\gas, \zArray,\zMem,\state)\\\\
 \end{array}$$
 
-
-
 \subsection{Checking gas limit}
 An execution step is out of gas if it has less than $0$ gas left. Derivation rules $\rar$ below don't check gas, but the steps are only valid ($\rightarrow$) if the step has some gas left. In the derivation below, $\str{out of gas}$ is a value that represents the string \emph{out of gas}.
 \begin{equation}
@@ -438,6 +398,48 @@ An execution step is out of gas if it has less than $0$ gas left. Derivation rul
 \input{conditionals}
 
 \section{Modelling smart contracts}
+\subsection{Solidity light}\label{sec:solidity-light}
+
+We can define some basic solidity constructs as macros (introduced variables are fresh) that we will use to model smart contracts.
+First, opcodes that require variable arguments can be relaxed to expect expressions, letting the \textsf{mstore} rule of \autoref{sec:alloc} evaluate statements of the form $x:=E$:
+
+$$ \begin{array} {lll}
+\mathsf{while}/\switch{E,B} &\equiv& x_\textrm{cond} := E; \mathsf{while}/\switch{x_\textrm{cond},B}\\\\
+\mathsf{revert}/\return{E_0,\dots,E_n} &\equiv& x_0:=E_0; \dots; x_n:=E_n;\\
+&& \mathsf{revert}/\return{x_0,\dots,x_n}\\\\
+\mathsf{(d)}\call{E_\textrm{to},E_{\textrm{fn}},E_0,\dots,E_n,E_{\textrm{gas}}} &:=& \left\{
+\begin{array}{l}
+x_\textrm{to} := E_\textrm{to};x_\textrm{fn} := E_\textrm{fn}; \\
+x_0 := E_0; \dots; x_n := E_n; \\
+x_\textrm{gas} := E_\textrm{gas}\\
+\mathsf{(d)}\call{x_\textrm{to},x_\textrm{fn},x_0,\dots,x_n,x_\textrm{gas}}
+\end{array}\right. \\\\
+\hsh{E_0,\dots, E_n} &\equiv&  x_0:=E_0; \dots; x_n:=E_n;\\
+&& \hsh{x_0,\dots,x_n}
+\end{array}
+$$
+
+We can then model core solidity primitives:
+$$\begin{array}{lll}
+\require(E_\textrm{cond},E_\textrm{reason}) &\equiv& \switch{\neg E_\textrm{cond},\revert{E_\textrm{reason}}}\\\\
+\texttt{$a$.$f$\{gas:$E_\textrm{gas}$\}($E_0,\dots,E_n$)} &\equiv& \left\{
+\begin{array}{l}
+    \call{a,f,E_0,\dots,E_n,E_\textrm{gas}}; \\
+    \require(\brd[0],\brd[1])
+\end{array}\right. \\\\
+\begin{array}{l}
+\texttt{try $a$.$f$\{gas:$E_\textrm{gas}$\}($E_0,\dots,E_n$)}\\
+\texttt{returns($x_0,\dots,x_m$)}\\
+\{\bytecode\ \} \texttt{ catch } \{\bytecode'\} \end{array} &\equiv& \left\{
+    \begin{array}{l}
+        \call{a,f,E_0,\dots,E_n,E_\textrm{gas}}; \\
+        \switch{\brd[0], (x_i:=\brd[i+1])_{i\leq |\brd|});\bytecode} \\
+        \switch{\neg\brd[0], \bytecode'}
+    \end{array}\right. \\\\
+z:=x_{\rm map}[E_0]\dots[E_n] &\equiv& z_{\rm loc}:=\hsh{x_{\rm map},E_0,\dots,E_n}; z:=\sload{z_{\rm loc}}\\\\
+x_{\rm map}[E_0]\dots[E_n]:=E &\equiv& z_{\rm loc}:=\hsh{x_{\rm map},E_0,\dots,E_n}; \sstore{z_{\rm loc},E}
+\end{array}
+$$
 
 \subsection{A simple custodian contract}
 

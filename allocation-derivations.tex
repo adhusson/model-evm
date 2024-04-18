@@ -1,6 +1,7 @@
+% !TEX root = main.tex
 \def\eval{\mathsf{eval}}
-\subsection{Storage and memory allocation}
-We first define the $\eval$ function that maps an expression to value and a gas cost:
+\subsection{Storage and memory allocation}\label{sec:alloc}
+We first define the $\eval$ function that maps an expression to a value and an evaluation gas cost:
 $$
 \begin{array}{llll}
     \eval(\ctx, \textit{gas},r,\memory,\state, op(x)) &=& 
@@ -10,9 +11,12 @@ $$
     \eval(\ctx,\textit{gas}, r,\memory,\state,\mathtt{this}) &=& (\ctx.\thisVal,&\denv) \\
     \eval(\ctx, \textit{gas}, r,\memory,\state, \mathtt{sender}) &=& (\ctx.\senderVal,&\denv) \\
     \eval(\ctx, \textit{gas}, r,\memory,\state,\bcd[i]) &=& (s.\callDataVal[i],&\dcd) \\
-    \eval(\ctx, \textit{gas}, r,\memory,\state,\brd[i]) &=& (s.\returnDataVal[i],&\drd)
+    \eval(\ctx, \textit{gas}, r,\memory,\state,\brd[i]) &=& (s.\returnDataVal[i],&\drd) \\
+    \eval(\ctx, \textit{gas}, r,\memory,\state, \hsh{x_0,\dots,x_n}) &=& (\mathit{keccak_{256}}(v_0::\dots::v_n), &\dhsh*n)
 \end{array}
 $$
+with $v_i=s.\memory(x_i)$, and $v::v'$ denoting value concatenation.
+ 
 \begin{figure}[ht]
 $$
 \begin{array}{c}
