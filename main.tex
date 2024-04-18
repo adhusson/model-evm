@@ -13,9 +13,12 @@
 %\newtheorem{example}{Example}
 \newtheorem{proposition}{Proposition}
 \newtheorem{example}{Example}
+\newtheorem{property}{Property}
 
 \newcommand{\propositionautorefname}{Proposition}
+\newcommand{\propertyautorefname}{Property}
 \newcommand{\exampleautorefname}{Example}
+\renewcommand{\subsectionautorefname}{Section}
 
 % Remove for publication but no margin is easier for previewing
 %\geometry{margin=.1in}
@@ -342,34 +345,40 @@ x_2 & \mapsto& \textrm{totalSupply}\in\Nat \\
 $$
 \end{example}
 
-In \autoref{ex:ERC20}, the \textit{balance\_map}, in the contract's storage, associates addresses to integers with $x_0[a]=n$ indicating that address $a$ owns $n$ tokens managed by this contract (see \autoref{sec:solidity-light} for the interpretation of a mapping in storage). The \textit{approval\_map} associates fund owner addresses to spender addresses and their allowance, so $x_1[\mathit{owner}][\mathit{spender}]=n$ indicates that the address $\mathit{spender}$ is allowed to transfer up to $n$ tokens  of \textit{owner} to an arbitrary address, using the \texttt{transferFrom} function of the ERC20's interface.
+In \autoref{ex:ERC20}, notice the constant function \texttt{name}() that returns a human readable name for the token managed by this contract without reading the contract's storage\footnote{This models immutable constants of the Solidity language}. The \textit{balance\_map}, in the contract's storage, associates addresses to integers with $x_0[a]=n$ indicating that address $a$ owns $n$ tokens managed by this contract (see \autoref{sec:solidity-light} for the interpretation of a mapping in storage). The \textit{approval\_map} associates fund owner addresses to spender addresses and their allowance, so $x_1[\mathit{owner}][\mathit{spender}]=n$ indicates that the address $\mathit{spender}$ is allowed to transfer up to $n$ tokens  of \textit{owner} to an arbitrary address, using the \texttt{transferFrom} function of the ERC20's interface. We will come back to the modelling of ERC20 contracts in \autoref{sec:ERC20}.
 
 \section{Operational semantics}
 
-\subsection{Execution steps and environment}
+\subsection{Execution steps and contexts}
 
-An \emph{(execution) context} is a tuple of the form $\ctx:=(\callDataVal\in\vec\vals,\thisVal\in\Addr,\senderVal\in\Addr)$, 
+An \emph{(execution) context} is a tuple of the form 
+$$
+\ctx:=(\callDataVal\in\vec\vals,\thisVal\in\Addr,\senderVal\in\Addr)
+$$
 where $\callDataVal$ is an array of values given by the caller, $\thisVal$ is the address of the current execution runner, 
 and $\senderVal$ is the address of the execution's caller. 
 
 An \emph{(execution) step} is a tuple of the form
-$\step:=(
+$$
+\step:=(
     \code\in\bytecodes,
     \gas\in\Uint,
     \returnDataVal\in\vec\vals, 
     \memory\in\vars\to\vals, 
     \state\in\states
-)$. The set of all steps is $\steps$.
+)
+$$
+The set of all steps is $\steps$. 
 
-\subsection{Transaction initialization}
-A \emph{transaction} $t$ is given as a tuple of the form $\tx:=(\originVal\in\Addr,\toVal\in\Addr,\fnVal\in\Str,\callDataVal\in\vec \vals, \gasVal\in\Uint)$ where $\originVal$ is the transaction originator, $\toVal$ is the address of the called contract, $\fnVal$ a function name and $\vec c$ its call data. The maximum amount of gas the transaction can spend is given by $\gasVal$.
+\subsection{Transaction initialisation}
+A \emph{transaction} $\tx$ is given as a tuple of the form $\tx:=(\originVal\in\Addr,\toVal\in\Addr,\fnVal\in\Str,\callDataVal\in\vec \vals, \gasVal\in\Uint)$ where $\originVal$ is the transaction originator, $\toVal$ is the address of the called contract, $\fnVal$ a function name and $\vec c$ its call data. The maximum amount of gas the transaction can spend is given by $\gasVal$.
 We use $\transactions$ to denote the set of transactions.
 
-A transaction $\tx$ executed on a blockchain $\state$ induces an initial context $\ctx_\tx$ and an initial step $\step_\tx$:
+A transaction $t$ executed on a blockchain $\state$ induces an initial context $\ctx_\tx$ and an initial step $\step_{\state,\tx}$, where:
 
 $$ \begin{array} {lll}
-\ctx(\tx) &:=& (\tx.\originVal,\tx.\toVal,\tx.\callDataVal)\\\\
-\step(\tx)&:=& \state \mapsto (\state(\tx.\toVal).\Abi(\tx.\fnVal),\tx.\gas, \zArray,\zMem,\state)\\\\
+\ctx_\tx &:=& (\tx.\originVal,\tx.\toVal,\tx.\callDataVal)\\\\
+\step_{\state,\tx} &:=& (\state(\tx.\toVal).\Abi(\tx.\fnVal),\tx.\gas, \zArray,\zMem,\state)\\\\
 \end{array}$$
 
 \subsection{Checking gas limit}
@@ -389,6 +398,31 @@ An execution step is out of gas if it has less than $0$ gas left. Derivation rul
 \ctx\vdash\step\to \step'
 }
 \end{equation}
+
+\subsection{Final steps}
+A step $s$ that does not rewrite to any step through $\rightarrow$ is \emph{final}. We denote it by $s \nrightarrow$. 
+%%
+\paragraph{Returning steps.}
+%%
+A step $s$ \emph{returns} an array $r\in\vec\vals$ when either:
+\begin{itemize}
+    \item $s.\code = \return{x_1,\dots,x_n};\bytecode$, for some variables $x_i$\,s and code $\bytecode$, in which case:
+    $r = [\trueVal,s.\memory(x_1),\dots,s.\memory(x_n)]$.
+    \item $s.\code = \zBytecode$, in which case $r = [\trueVal]$.
+\end{itemize}
+
+\begin{property} 
+Any returning step is final.
+\end{property}
+%%
+\paragraph{Reverting steps.}
+Any non-returning final step $s$ \emph{reverts} an array $r\in\vec\vals$ with:
+\begin{itemize}
+    \item $r = \ary{\falseVal, s.\memory(x_1),\dots, s.\memory(x_n)}$ when $s.\code = \revert{x_1,\dots,x_n};\bytecode$, for some variables $x_i$s and code $\bytecode$.
+    \item $r = \ary{\falseVal}$ otherwise.
+\end{itemize}
+
+
 
 \newpage 
 \input{call-derivations}
@@ -429,8 +463,8 @@ $$\begin{array}{lll}
 \end{array}\right. \\\\
 \begin{array}{l}
 \texttt{try $a$.$f$\{gas:$E_\textrm{gas}$\}($E_0,\dots,E_n$)}\\
-\texttt{returns($x_0,\dots,x_m$)}\\
-\{\bytecode\ \} \texttt{ catch } \{\bytecode'\} \end{array} &\equiv& \left\{
+\texttt{returns($x_0,\dots,x_m$)}\{\bytecode\ \}\\
+\texttt{catch } \{\bytecode'\} \end{array} &\equiv& \left\{
     \begin{array}{l}
         \call{a,f,E_0,\dots,E_n,E_\textrm{gas}}; \\
         \switch{\brd[0], (x_i:=\brd[i+1])_{i\leq |\brd|});\bytecode} \\
@@ -441,7 +475,7 @@ x_{\rm map}[E_0]\dots[E_n]:=E &\equiv& z_{\rm loc}:=\hsh{x_{\rm map},E_0,\dots,E
 \end{array}
 $$
 
-\subsection{A simple custodian contract}
+\subsection{A simple custodian contract}\label{sec:ERC20}
 
 \bibliographystyle{plain}
 \bibliography{blockchain}

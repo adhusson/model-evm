@@ -1,23 +1,5 @@
+% !TEX root = main.tex
 \subsection{Function calls derivations}
-\subsubsection{Final steps}
-A step $s$ that does not rewrite to any step through $\rightarrow$ is \emph{final}. We denote it by $s \nrightarrow$. 
-\paragraph{Returning steps}
-
-A step $s$ \emph{returns} an array $r$ when either:
-\begin{itemize}
-    \item $r = [\trueVal,s.\memory(x_1),\dots,s.\memory(x_n)]$ if $s.\code = \return{x_1,\dots,x_n};\bytecode$, for some $x_i$\,s and $\bytecode$, and
-    \item $r = [\trueVal]$ if $s.\code = \zBytecode$
-\end{itemize}
-\subparagraph{Exercise} Show that any returning step is final (hint: check derivation rules).
- 
-
-
-\paragraph{Reverting steps}
-Any non-returning final step $s$ reverts $r$, where
-\begin{itemize}
-    \item $r = \ary{\falseVal, s.\memory(x_1),\dots, s.\memory(x_n)}$ if $s.\code = \revert{x_1,\dots,x_n};\bytecode$, for some $x_i$s and $\bytecode$, and
-    \item $r = \ary{\falseVal}$ otherwise
-\end{itemize}
 
 \subsubsection{Context nesting}
 We say that \emph{$\ctx\vdash s$ creates $\ctx'\vdash(B',G')| B$} when
