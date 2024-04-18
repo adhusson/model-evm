@@ -470,8 +470,8 @@ $$\begin{array}{lll}
         \switch{\brd[0], (x_i:=\brd[i+1])_{i\leq |\brd|});\bytecode} \\
         \switch{\neg\brd[0], \bytecode'}
     \end{array}\right. \\\\
-z:=x_{\rm map}[E_0]\dots[E_n] &\equiv& z_{\rm loc}:=\hsh{x_{\rm map},E_0,\dots,E_n}; z:=\sload{z_{\rm loc}}\\\\
-x_{\rm map}[E_0]\dots[E_n]:=E &\equiv& z_{\rm loc}:=\hsh{x_{\rm map},E_0,\dots,E_n}; \sstore{z_{\rm loc},E}
+z:=E_{\rm map}[E_0]\dots[E_n] &\equiv& z_{\rm loc}:=\hsh{E_{\rm map},E_0,\dots,E_n}; z:=\sload{z_{\rm loc}}\\\\
+E_{\rm map}[E_0]\dots[E_n]:=E &\equiv& z_{\rm loc}:=\hsh{E_{\rm map},E_0,\dots,E_n}; \sstore{z_{\rm loc},E}
 \end{array}
 $$
 
