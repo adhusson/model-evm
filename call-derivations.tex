@@ -4,15 +4,21 @@
 \paragraph{Call step.}
 A $\step$ \emph{calls $(a\in\Addr,B\in\bytecodes,c\in\vec{\vals},G\in\Nat)$ with continuation} $B'$ when
 $$
-\step.\code = \mathsf{(d)}\call{x_\Addr,x_\Str,x_1,\dots,x_n, x_\Nat};B'
-$$
-and
-$$
-\begin{array}{lll}
-a&=&\step.\memory(x_\Addr) \\
-B&=&\step.\state(a).\Abi(\step.\memory(x_\Str)) \\
-c[i]&=&\step.\memory(x_i) \\
-G&=&\step.\memory(x_\Nat)
+\begin{array}{ll}
+&\left\{
+    \begin{array}{lll}
+    s.\code &=&  \call{x_\Addr,x_\Str,x_1,\dots,x_n, x_\Nat};B \\
+    \ctx' &=&(\callDataVal\mapsto c,
+     \thisVal\mapsto a,
+     \senderVal\mapsto\ctx.\thisVal)
+    \end{array}\right.\\
+\hbox{ or }&\\
+&\left\{
+    \begin{array}{lll}
+    s.\code &=& \dcall{x_\Addr,x_\Str,x_1,\dots,x_n, x_\Nat};B \\
+    \ctx'&=&\ctx\set{\callDataVal\mapsto c},
+    \end{array}
+    \right.
 \end{array}
 $$
 We say that the above call step \emph{delegates} if the opcode is ${\sf dcall}$.
