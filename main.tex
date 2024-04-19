@@ -400,15 +400,15 @@ An execution step is out of gas if it has less than $0$ gas left. Derivation rul
 \end{equation}
 
 \subsection{Final steps}
-A step $s$ that does not rewrite to any step through $\rightarrow$ is \emph{final}. We denote it by $s \nrightarrow$. 
+A $\step$ that does not rewrite to any step through $\rightarrow$ is \emph{final}. We denote it by $\step \nrightarrow$. 
 %%
 \paragraph{Returning steps.}
 %%
-A step $s$ \emph{returns} an array $r\in\vec\vals$ when either:
+A $\step$ \emph{returns} an array $r\in\vec\vals$ when either:
 \begin{itemize}
-    \item $s.\code = \return{x_1,\dots,x_n};\bytecode$, for some variables $x_i$\,s and code $\bytecode$, in which case:
-    $r = [\trueVal,s.\memory(x_1),\dots,s.\memory(x_n)]$.
-    \item $s.\code = \zBytecode$, in which case $r = [\trueVal]$.
+    \item $\step.\code = \return{x_1,\dots,x_n};\bytecode$, for some variables $x_i$\,s and code $\bytecode$, in which case:
+    $r = [\trueVal,\step.\memory(x_1),\dots,\step.\memory(x_n)]$.
+    \item $\step.\code = \zBytecode$, in which case $r = [\trueVal]$.
 \end{itemize}
 
 \begin{property} 
@@ -416,21 +416,20 @@ Any returning step is final.
 \end{property}
 %%
 \paragraph{Reverting steps.}
-Any non-returning final step $s$ \emph{reverts} an array $r\in\vec\vals$ with:
+Any non-returning final $\step$ \emph{reverts} an array $r\in\vec\vals$ with:
 \begin{itemize}
-    \item $r = \ary{\falseVal, s.\memory(x_1),\dots, s.\memory(x_n)}$ when $s.\code = \revert{x_1,\dots,x_n};\bytecode$, for some variables $x_i$s and code $\bytecode$.
+    \item $r = \ary{\falseVal, \step.\memory(x_1),\dots, \step.\memory(x_n)}$ when $\step.\code = \revert{x_1,\dots,x_n};\bytecode$, for some variables $x_i$s and code $\bytecode$.
     \item $r = \ary{\falseVal}$ otherwise.
 \end{itemize}
+%%
 
-
-
-\newpage 
+%%%%%%%%
 \input{call-derivations}
-\newpage
+%%%%%%%%
 \input{allocation-derivations}
-\newpage
+%%%%%%%%
 \input{conditionals}
-
+%%%%%%%%
 \section{Modelling smart contracts}
 \subsection{Solidity light}\label{sec:solidity-light}
 

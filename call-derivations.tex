@@ -1,80 +1,41 @@
 % !TEX root = main.tex
 \subsection{Function calls derivations}
 
-\subsubsection{Context nesting}
-We say that \emph{$\ctx\vdash s$ creates $\ctx'\vdash(B',G')| B$} when
-
+\paragraph{Call step.}
+A $\step$ \emph{calls $(a\in\Addr,B\in\bytecodes,c\in\vec{\vals},G\in\Nat)$ with continuation} $B'$ when
 $$
-\begin{array}{ll}
-&\left\{
-    \begin{array}{lll}
-    s.\code &=&  \call{x_\Addr,x_\Str,x_1,\dots,x_n, x_\Nat};B \\
-    \ctx' &=&(\callDataVal\mapsto c,
-     \thisVal\mapsto a,
-     \senderVal\mapsto\ctx.\thisVal)
-    \end{array}\right.\\
-\hbox{ or }&\\
-&\left\{
-    \begin{array}{lll}
-    s.\code &=& \dcall{x_\Addr,x_\Str,x_1,\dots,x_n, x_\Nat};B \\
-    \ctx'&=&\ctx\set{\callDataVal\mapsto c},
-    \end{array}
-    \right.
+\step.\code = \mathsf{(d)}\call{x_\Addr,x_\Str,x_1,\dots,x_n, x_\Nat};B'
+$$
+and
+$$
+\begin{array}{lll}
+a&=&\step.\memory(x_\Addr) \\
+B&=&\step.\state(a).\Abi(\step.\memory(x_\Str)) \\
+c[i]&=&\step.\memory(x_i) \\
+G&=&\step.\memory(x_\Nat)
 \end{array}
 $$
+We say that the above call step \emph{delegates} if the opcode is ${\sf dcall}$.
+
+\paragraph{Derivation of a function call}
+
 $$
-\begin{array}{cc}
-\hbox{and }
-\left\{
-    \begin{array}{lll}
-    s.\memory(x_\Addr) & = & a \\
-    s.\memory(x_\Str) & = & f \\
-    s.\memory(x_i) & = & c[i]\quad \forall i\leq n \\
-    s.\memory(x_\Nat) & = & G' \\
-    \bytecode{}' &=& s.\state(a).\Abi(f)\\
-    s.\gas &\geq& G' + \dcl
-    \end{array}\right.
-\end{array}
-$$
-
-for some $x_\Addr$,\dots,$x_\Nat$, $c$,$a$, and $f$. This definition applies to all (context,step) pairs that create a new call frame, whether through a call or a delegatecall. 
-
-$\ctx'$ is the call context. For a call, it changes the values of $\thisVal$ and $\senderVal$. For a delegatecall, it keeps those of $\ctx$. 
-
-$B'$ is the bytecode of the new call frame and corresponds to the code at the given function ($f$) name at the given address ($a$). 
-
-$G'$ is the gas given for the call. 
-
-$B$ is the continuation bytecode after the call has ended (i.e. the rest of the bytecode after $s$'s call instruction).
-
-\subsubsection{Derivation of a function call}
-
-\begin{table}[ht]
-$$
-\begin{array}{c}
 \dfrac{
-    \begin{array}{lll}
-    % s.\code &=& I;B\\
-    \multicolumn{3}{l}{\textrm{$\ctx\vdash s$ creates $\ctx'\vdash (B',G')|B$}}\\
-     \mathsf{\ctx'}&\vdash& 
-     (\bytecode{}{}',G,[],\zMem,s.\state) \to^* t \nrightarrow\\
-     \state &:=& \left\{
+	\begin{array}{l}
+	\textrm{$\step$ calls $(a,B,c,G)$ with continuation $B'$} \\
+	\ctx' = \left\{\begin{array}{l}
+	\ctx\set{\callDataVal\mapsto c} \textrm{ if $\step$ delegates}\\
+	(\callDataVal\mapsto c,\thisVal\mapsto a,\senderVal\mapsto\ctx.\thisVal) \textrm{ otherwise}\\
+	\end{array}\right. \\
+	\ctx'\vdash (B,G,[],\zMem,\step.\state)\to^* \step' \nrightarrow \\
+	G' = \step.\gas-\dcl+(\step'.\gas-G) \\
+	\state' =\left\{
     \begin{array}{l}
-        \textrm{$t.\state$ if $t$ returns $r$}\\
-        \textrm{$s.\state$ if $t$ reverts $r$}
-    \end{array}\right.\\
-    \textit{gas} &:=& s.\textit{gas}-\dcl+t.\textit{gas}-G'
-    \end{array}
-}{
- \ctx
- \vdash
- s
- \rar 
- (\bytecode,\textit{gas},r,s.\textit{mem},
- \state
- )
-}\rlab{xcall}
-\end{array}
+        \textrm{$\step'.\state$ if $\step'$ returns $r$}\\
+        \textrm{$\step.\state$ if $\step$ reverts $r$}
+    \end{array}\right.
+	\end{array}
+}
+{\ctx\vdash\step \rar \ctx\vdash (B',G' ,r,\step.\memory,\state')}\rlab{(d)call}
 $$
-\end{table}
 
