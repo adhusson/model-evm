@@ -1,12 +1,13 @@
+% !TEX root = main.tex
 \subsection{Conditionals and loops}
 
 \begin{figure}[ht]
 $$
 \begin{array}{c}
 \dfrac{
-s.\code =  \switch{x_\textrm{cond},\bytecode'};\bytecode
+\step.\code =  \switch{x_\textrm{cond},\bytecode'};\bytecode
 \quad \bytecode'' = \left\{\begin{array}{ll}
-\bytecode  &\hbox{if}\ s.\memory(x_\textrm{cond}) = \z \\
+\bytecode  &\hbox{if}\ s.\memory(x_\textrm{cond}) = \z_\Bool \\
 \bytecode';\bytecode&\hbox{otherwise} \\
 \end{array}\right.
 } 
@@ -17,14 +18,14 @@ s.\code =  \switch{x_\textrm{cond},\bytecode'};\bytecode
 }\rlab{if}
 \\\\
 \dfrac{
-s.\code =  \switch{x_\textrm{cond},\bytecode'};\bytecode
+\step.\code =  \switch{x_\textrm{cond},\bytecode'};\bytecode
 \quad \bytecode'' = \left\{\begin{array}{ll}
-\bytecode &\hbox{if}\ s.\memory(x_\textrm{cond}) = \z\\
+\bytecode &\hbox{if}\ s.\memory(x_\textrm{cond}) = \z_\Bool\\
 \bytecode';\while{x_\textrm{cond},\bytecode'};\bytecode &\hbox{otherwise}
 \end{array}\right.
 } 
 {
-\ctx \vdash s \rar s\set{\gas\mapsto g-\dmr,\code\mapsto \bytecode''}
+\ctx \vdash \step \rar \step\set{\gas\mapsto g-\dmr,\code\mapsto \bytecode''}
 }\rlab{while} 
 \end{array}
 $$

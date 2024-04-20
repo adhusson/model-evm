@@ -1,40 +1,32 @@
 % !TEX root = main.tex
-\subsection{Function calls derivations}
+\subsection{Function calls}
 
 \paragraph{Call step.}
-A $\step$ \emph{calls $(a\in\Addr,B\in\bytecodes,c\in\vec{\vals},G\in\Nat)$ with continuation} $B'$ when
+A $\step$ \emph{calls $(a\in\Addr,f\in\Str,B\in\bytecodes,c\in\vec{\vals},g\in\Uint)$ with continuation} $B'\in\bytecodes$ when
 $$
-\begin{array}{ll}
-&\left\{
-    \begin{array}{lll}
-    s.\code &=&  \call{x_\Addr,x_\Str,x_1,\dots,x_n, x_\Nat};B \\
-    \ctx' &=&(\callDataVal\mapsto c,
-     \thisVal\mapsto a,
-     \senderVal\mapsto\ctx.\thisVal)
-    \end{array}\right.\\
-\hbox{ or }&\\
-&\left\{
-    \begin{array}{lll}
-    s.\code &=& \dcall{x_\Addr,x_\Str,x_1,\dots,x_n, x_\Nat};B \\
-    \ctx'&=&\ctx\set{\callDataVal\mapsto c},
-    \end{array}
-    \right.
+\begin{array}{lll}
+    \step.\code &=&  \mathsf{(d)}\call{x_{\rm to},x_{\rm fn},x_1,\dots,x_n, x_{\rm gas}};B' \\
+    a & =& \step.\memory(x_{\rm to}) \\
+    f & =& \step.\memory(x_{\rm fn}) \\
+    B &=& \state(a).\Abi(f)\\
+    c & =& [\step.\memory(x_1),\dots,\step.\memory(x_n)] \\
+    g & =&\step.\memory(x_{\rm gas}) 
 \end{array}
 $$
-We say that the above call step \emph{delegates} if the opcode is ${\sf dcall}$.
+We say that the above call step \emph{delegates} if the opcode is ${\sf dcall}$ and not ${\sf call}$.
 
-\paragraph{Derivation of a function call}
+\paragraph{Derivation of a function call.}
 
 $$
 \dfrac{
 	\begin{array}{l}
-	\textrm{$\step$ calls $(a,B,c,G)$ with continuation $B'$} \\
+	\textrm{$\step$ calls $(a,f,B,c,g)$ with continuation $B'$} \\
 	\ctx' = \left\{\begin{array}{l}
 	\ctx\set{\callDataVal\mapsto c} \textrm{ if $\step$ delegates}\\
 	(\callDataVal\mapsto c,\thisVal\mapsto a,\senderVal\mapsto\ctx.\thisVal) \textrm{ otherwise}\\
 	\end{array}\right. \\
-	\ctx'\vdash (B,G,[],\zMem,\step.\state)\to^* \step' \nrightarrow \\
-	G' = \step.\gas-\dcl+(\step'.\gas-G) \\
+	\ctx'\vdash (B,g,[],\zMem,\step.\state)\to^* \step' \nrightarrow \\
+	g' = \step.\gas-\dcl+(\step'.\gas-g) \\
 	\state' =\left\{
     \begin{array}{l}
         \textrm{$\step'.\state$ if $\step'$ returns $r$}\\
@@ -42,6 +34,13 @@ $$
     \end{array}\right.
 	\end{array}
 }
-{\ctx\vdash\step \rar \ctx\vdash (B',G' ,r,\step.\memory,\state')}\rlab{(d)call}
+{\ctx\vdash\step \rar (B',g' ,r,\step.\memory,\state')}\rlab{(d)call}
 $$
 
+\begin{property}
+Assume a $\step$ that calls $(a,f,B,c,g)$ with continuation $B'$. The following properties hold:
+\begin{itemize}
+\item If $\step.\state(a)$ is an external account, then $B=\z_\bytecodes$.
+\item If $\step.\state(a)$ is a contract, but $f$ is not an element of its interface, then $B=\revert{}$. 
+\end{itemize}
+\end{property}

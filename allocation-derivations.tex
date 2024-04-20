@@ -1,12 +1,14 @@
 % !TEX root = main.tex
 \def\eval{\mathsf{eval}}
 \subsection{Storage and memory allocation}\label{sec:alloc}
+
+\paragraph{Evaluation function.}
 We first define the $\eval$ function that maps an expression to a value and an evaluation gas cost:
 $$
 \begin{array}{llll}
     \eval(\ctx, \textit{gas},r,\memory,\state, op(x)) &=& 
     (op(s.\memory(x)),&\dmr) \\
-    \eval(\ctx, \textit{gas},r,\memory,\state, \sload{x_\Nat}) &=& (s.\state(x_\Nat),&\dsr)\\
+    \eval(\ctx, \textit{gas},r,\memory,\state, \sload{x_\Uint}) &=& (s.\state(x_\Uint),&\dsr)\\
     \eval(\ctx, \textit{gas}, r,\memory,\state, \mathtt{gasleft}) &=& (s.\textit{gas},&\denv) \\
     \eval(\ctx,\textit{gas}, r,\memory,\state,\mathtt{this}) &=& (\ctx.\thisVal,&\denv) \\
     \eval(\ctx, \textit{gas}, r,\memory,\state, \mathtt{sender}) &=& (\ctx.\senderVal,&\denv) \\
@@ -15,9 +17,10 @@ $$
     \eval(\ctx, \textit{gas}, r,\memory,\state, \hsh{x_0,\dots,x_n}) &=& (\mathit{keccak_{256}}(v_0::\dots::v_n), &\dhsh*n)
 \end{array}
 $$
-with $v_i=s.\memory(x_i)$, and $v::v'$ denoting value concatenation.
+with $v_i=\memory(x_i)$, and $v::v'$ denoting value concatenation.
  
-\begin{figure}[ht]
+\paragraph{Storage and memory access derivations.}
+
 $$
 \begin{array}{c}
 \dfrac{
@@ -33,15 +36,13 @@ $$
 \dfrac{
 \eval(\ctx,\textit{gas}, r,\memory,\state,E) = (v,\delta)
 \quad
-\state' = \state\set{\ctx.\thisVal\set{\store\set{\memory(x_\Nat)\mapsto v}}}
+\state' = \state\set{\ctx.\thisVal\set{\store\set{\memory(x_{\rm pos})\mapsto v}}}
 }
 {
 \ctx\vdash 
-(\sstore{x_\Nat,E};\bytecode,\textit{gas}, r, \memory,\state) 
-\rar 
+(\sstore{x_{\rm pos},E};\bytecode,\textit{gas}, r, \memory,\state) 
+\rar  
 (\bytecode,\textit{gas}-\delta-\delta_\mathsf{sw}, r,\memory,\state')
 }\rlab{sstore}
 \end{array}
 $$
-\caption{Allocation rules.}
-\end{figure}

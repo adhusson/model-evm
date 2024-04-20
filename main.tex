@@ -44,8 +44,8 @@
 \def\while#1{\mathtt{while}(#1)}
 
 % math
-\def\Nat{\mathbb{N}}
-\def\Uint{\mathbb{U}}
+\def\Uint{\mathbb{N}}
+\def\Int{\mathbb{Z}}
 \def\Bool{\mathbb{B}}
 \def\Addr{\mathbb{A}}
 \def\Str{\mathbb{S}}
@@ -59,12 +59,12 @@
 
 
 % contracts
-\def\Ctr{\mathsf{Ctr}}
-\def\Abi{\textit{ABI}}
-\def\Block{\mathbf{S}}
-\def\tx{\mathsf{tx}}
+%\def\Ctr{\mathsf{Ctr}}
+\def\Abi{\textit{abi}}
+%\def\Block{\mathbf{S}}
+\def\tx{\mathit{tx}}
 \def\transactions{\textit{Transactions}}
-\def\ctx{\mathsf{Ctx}}
+\def\ctx{\mathit{context}}
 
 \def\thisVar{\texttt{this}}
 \def\thisVal{\textit{this}}
@@ -90,7 +90,7 @@
 \def\callDataVar{\texttt{calldata}}
 \def\callDataVal{\textit{calldata}}
 \def\memory{\textit{mem}}
-\def\step{\mathsf{Step}}
+\def\step{\mathit{step}}
 \def\steps{\textit{Steps}}
 \def\endStep{\mathsf{End}}
 \def\continuation#1{\textit{continuation}(#1)}
@@ -146,28 +146,26 @@ This paper aims at modelling some core design principles of Mangrove, an order-b
 \subsection{General principle}
 Mangrove \cite{Mangrove} is a two sided protocol whose users are called \emph{Takers} on the one hand and \emph{Makers} on the other. Makers are typically arbitrary smart contracts that can promise a certain quantity $N_O$ of \emph{outbound} assets on Mangrove in exchange of $N_I$ \emph{inbound} assets. Assets are assumed to be managed by smart contracts that implement ERC20-like interfaces \cite{ERC20}. These promises are called (maker) \emph{offers} and the \emph{owner} of an offer is the address of the Maker that posted the promise. The ratio $N_I/N_O$ is the (Maker) price that is used to sort offers: on a given outbound/inbound offer list, the first and best offer is the one with the lowest price. The present paper does not address the issue of price representation in the EVM. We assume here that arbitrary precision can be used.
 
-Mangrove presents two main public functions: \texttt{newOffer} and \texttt{marketOrder}. The first one is used by Maker contracts to publish a new offer on Mangrove, while the second is called by Takers who wish to swap a certain amount of inbound tokens against as many offers as possible, as long as the average price of the offers consumed matches a \emph{limit} specified by the taker. Recall that offers are consumed in the order induced by the offer list, from best to worst.
+Mangrove presents two main public functions: \texttt{newOffer} and \texttt{marketOrder}. The first one is used by Maker contracts to publish a new offer on Mangrove, while the second is called by Takers who wish to swap a certain amount of inbound tokens against as many offers as possible, as long as the price of the offers consumed stays below a \emph{limit} specified by the taker. Recall that offers are consumed in the order induced by the offer list, from best to worst.
 
 The innovation of Mangrove relies on its ability to perform calls to arbitrary smart contracts during the execution of the (Taker initiated) market order transaction: each time an offer is matched against a Taker market order, the Maker contract that posted the offer is called with an amount of gas that was requested  when the offer was made. Hence, the \texttt{newOffer} function of Mangrove can be modelled as:
 $$
-\mathtt{newOffer}(\mathit{outbound}, \mathit{inbound}, \mathit{price}, \mathit{gasreq})\ \mathtt{payable}
+\mathtt{newOffer}(\mathit{outbound}, \mathit{inbound}, \mathit{price}, \mathit{gasreq})
 $$
-where \emph{outbound} and \emph{inbound} are the addresses of the ERC20 that manage respectively the inbound and outbound assets of the offer, \emph{price} is the Maker price at which it is willing to exchange tokens, and \emph{gasreq} is the amount of gas units that the Maker requires to execute its offer when called by Mangrove. If two offers have the same price, offers that were inserted first take precedence. The offer above is \emph{payable}, which is an annotation that refers to the fact that some amount of ether can be transfered by the Maker when the function is called. This amount of ether is called a \emph{provision} and is used by Mangrove to penalise the Maker when its offer fails to deliver (see \autoref{sec:ftd}). The logic of the provision is to ask the Maker to put aside a sufficient amount of ether to cover the cost of the Taker in case the Maker's offer fails to deliver. At worst the gas spent by the offer is \emph{gasreq}, so the provision required by Mangrove is $(\mathit{gasreq}+\emph{gasbase})*\mathit{gasprice}$, where \emph{gasbase} is a protocol constant and \emph{gasprice} is a protocol variable that covers a reasonable gas price on the blockchain that hosts the Mangrove smart contract. Making sure that the amount of Takers' compensations is adequate is not studied in the present work, however we will prove that a compensation is indeed sent to the Taker if and only if the Maker's offer is to blame.
+where \emph{outbound} and \emph{inbound} are the addresses of the ERC20 that manage respectively the inbound and outbound assets of the offer, \emph{price} is the Maker price at which it is willing to exchange tokens, and \emph{gasreq} is the amount of gas units that the Maker requires to execute its offer when called by Mangrove. If two offers have the same price, offers that were inserted first take precedence. Importantly, a Maker that wishes to call \texttt{newOffer} needs to have deposited, prior to calling the function, a certain amount of ether on Mangrove, which can be retrieved by the Maker when the offer is withdrawn. This deposit is called a \emph{provision} and is used by Mangrove to penalise the Maker if its offer fails to deliver when called (see \autoref{sec:ftd}). At worst the gas spent by the offer is \emph{gasreq}, so the provision required by Mangrove is $(\mathit{gasreq}+\emph{gasbase})*\mathit{gasprice}$, where \emph{gasbase} is a protocol constant and \emph{gasprice} is a protocol variable that covers a reasonable\footnote{Typically an upper bound of the average gas price observed over a certain number of blocks.} gas price on the blockchain that hosts the Mangrove smart contract. Making sure that the amount of Takers' compensations is adequate is not studied in the present work, however we will prove that a compensation is indeed sent to the Taker if and only if the Maker's offer is to blame.
 
 On the Taker's side, a call to Mangrove's \texttt{marketOrder} can be modelled as:
 $$
 \mathtt{marketOrder}(\mathit{outbound}, \mathit{inbound}, \mathit{outbound\_volume}, \mathit{limit\_price}, \mathit{limit\_gasreq})
 $$
-% no takerWants variable (or similar)?
-where \emph{outbound} and \emph{inbound} identifies the traded assets, and \emph{outbound\_volume} is the number of inbound assets that the Taker expects for a \emph{complete fill}. A Taker \emph{partial fill} occurs when the Taker receives a volume $v$ of outbound tokens that satisfies $0<v<\mathit{outbound\_volume}$. The final arguments \emph{limit\_price} and \emph{limit\_gasreq} are respectively a price limit for the market order (see \autoref{sec:matching} and a bound on the amount of gas that can be spent on failing offers (see \autoref{sec:ftd}). 
+where \emph{outbound} and \emph{inbound} identifies the traded assets, and \emph{outbound\_volume} is the number of inbound assets that the Taker expects for a \emph{complete fill}. A Taker \emph{partial fill} occurs when the Taker receives a volume $v$ of outbound tokens with $0<v<\mathit{outbound\_volume}$. The final arguments \emph{limit\_price} and \emph{limit\_gasreq} are respectively a price limit for the market order (see \autoref{sec:matching}) and a bound on the amount of gas that can be spent on failing offers (see \autoref{sec:ftd}). 
 
 \subsection{Offer execution}\label{sec:matching}
 Suppose a Taker triggers a market order with the call: 
 $$
 \mathtt{mgv.marketOrder}(o,i,V,l_p,l_g)
 $$
-where $\mathtt{mgv}$ is the address of a deployed Mangrove contract. The protocol will select the current best promise of the $(o,i)$ offer list. If the price of this offer is less or equal to $l_p$, Mangrove attempts to call the offer owner on a reserved \texttt{makerExecute} function with as many gas unit as the offer requires when posted. After a successful termination of \texttt{makerExecute} (i.e with no revert), Mangrove will attempt to transfer the promised outbound tokens from the Maker contract to the taker, using the ERC20 public function \texttt{transferFrom}. If the Taker has enough gas and the amount of received outbound tokens is less than $V$ (which includes the case where no outbound tokens were received), Mangrove will iterate the process on the new best offer of the list if its price is lower than $l_p$. If no such offer exists, Mangrove returns the partial fill to the Taker.  
-% should mention the 2-step maker->mgv, mgv->taker that means we can show we don't unduly penalize the taker (or the maker) when their counterparty is responsible for the transfer failure (eg theyve been blacklisted)
+where $\mathtt{mgv}$ is the address of a deployed Mangrove contract. The protocol will select the current best promise of the $(o,i)$ offer list. If the price of this offer is less or equal to $l_p$, Mangrove attempts to call the offer owner on a reserved \texttt{makerExecute} function with as many gas unit as the offer requires when posted. After a successful termination of \texttt{makerExecute} (i.e with no revert), Mangrove will attempt to transfer the promised outbound tokens from the Maker contract to itself, using the ERC20 public function \texttt{transferFrom}. If the Taker has enough gas and the amount of received outbound tokens is less than $V$ (which includes the case where no outbound tokens were received), Mangrove will iterate the process on the new best offer of the list if its price is lower than $l_p$. If no such offer exists, Mangrove returns the accumulated outbound tokens to the Taker.  
 
 Notice that the Maker contract is given an amount of gas to perform \emph{arbitrary} calls, which may be used to fetch the promised outbound tokens anywhere on chain, decide to renege on the trade (see \autoref{sec:ftd}), or actually decide to try to perform a reentrant attack on the protocol (see \autoref{sec:attacks}). The \autoref{fig:MarketOrder} shows an example of a market order transaction.
 %%
@@ -188,7 +186,7 @@ An offer owned by a Maker contract \texttt{mkr} fails to deliver if any on the f
 
 Case~\ref{enu:blacklisted} occurs typically when the address \texttt{mkr} is blacklisted by the ERC20 in charge of maintaining the inbound token balance. Case~\ref{enu:reverts} occurs for many reasons, including reverting on purpose in order to renege on trade. Another typical case is \texttt{mkr} reverting with an \emph{out of gas} exception, which occurs when the \emph{gasreq} argument of \texttt{newOffer} was underestimated by the Maker. Case~\ref{enu:allowance} occurs when \texttt{mkr} has not approved Mangrove to call \texttt{transferFrom} on the ERC20 contract managing the outbound token. It may also occur if the \texttt{mkr} contract does not have the promised funds.
 
-Importantly, when an offer FTD's Mangrove is able to penalise its owner using the \emph{provision} that was deposited by the Maker thanks to the payable \texttt{newOffer} function.
+Importantly, when an offer fails to deliver, Mangrove is able to penalise its owner using the \emph{provision} that was deposited by the Maker before calling the \texttt{newOffer} function.
 
 \subsection{Attack vectors}\label{sec:attacks}
 
@@ -197,13 +195,12 @@ We are interested in showing that Mangrove's protocol effectively shields users 
 \paragraph{Non compliance with Maker offers.}
 Maker contracts that are called by Mangrove might not have full knowledge about the price and volume that they promised when posting their offers. Indeed recording such values would incur important gas cost, and Maker contracts should be able to trust Mangrove's data when called on \texttt{makerExecute}. 
 
-Similarly, Maker contracts that fail to deliver will compensate the Taker of the loss of gas. This implies that running out of gas during maker execute is always blaming the Maker. 
+Similarly, Maker contracts that fail to deliver will compensate the Taker for the loss of gas. Since running out of gas during \texttt{makerExecute} will make offer fail to deliver, on must make sure that \texttt{makerExecute} is never called with less gas than required.
 
 \begin{proposition}[Compliance]
 A Maker is called by Mangrove on {\rm\texttt{maker\-Execute}} if and only if:
 \begin{enumerate}
 \item The call occurs within a market order
-% or a snipe?
 \item The call has a gas limit set to the offer's \emph{gasreq}.
 \item The required volume is less or equal to the volume the Maker promised to send.
 \item The price agreed by the taker is exactly the price at which the Maker promised to swap. 
@@ -217,8 +214,7 @@ Reverts that occur outside a call to {\rm\texttt{makerExecute}} make the market 
 \paragraph{Arbitrage.}
 When called by Mangrove on {\tt makerExecute}, a Maker contract is given a certain amount of gas units to run (see (A) and (B) sections of \autoref{fig:MarketOrder}). This amount is specified by the Maker with the \emph{gasreq} argument of the {\tt newOffer} function. We wish to guarantee that the Maker cannot utilise this gas to \emph{arbitrage} the trade: if Taker is willing to buy at price $p$ and Maker made its offer at price $p'<p$, Maker could revert on the current offer (sending a fraction $f$ of its provision to the Taker in compensation) and place a new offer on the list (with a reentrant call to {\tt newOffer}) with a new price $p''>p'$ and lower than the next best price on the offer list. This is guaranteed to be profitable for Maker if $f$ is small enough in front of selling a volume $V$ at price $p''$ instead of $p'$.
 \begin{proposition}[No Taker side leakage]
-During the execution of {\rm\texttt{makerExecute}}, the Maker contract cannot infer an upper bound on the limit price of the Taker's market order.
-% This doesn't seem to be very clear (infer can mean guess right?)
+During the execution of {\rm\texttt{makerExecute}}, Mangrove's state does not give access to the limit price of the Taker's market order.
 \end{proposition}
 
 \begin{proposition}[No Maker side leakage]
@@ -229,8 +225,7 @@ During the execution of {\rm\texttt{makerExecute}}, offers from the same offer l
 This potential issue is in the category of griefing attacks, designed to harm protocol usability without immediate payoff for the attacker. The idea is to place offers so that any Takers' market orders end up reverting or unfilled (without the appropriate compensation).    
 
 \begin{proposition}[Progress]
-For all offer list state, there exists a \emph{productive} market order, i.e. that is either a partial fill or returns a compensation for the Taker.
-% nonzero partial fill? otherwise you can imagine an offer that somehow gives 0 and reinserts itself, for instance by exploiting bad rounding in the Mangrove contract
+For all offer list state, there exists a \emph{productive} market order, i.e. that is either a non empty partial fill or returns a compensation for the Taker.
 \end{proposition}
 
 \paragraph{Memory expansion attack.}
@@ -251,7 +246,7 @@ We proceed with the formal presentation of an EVM-light, which will serve as an 
 \subsection{Terminology}
 We consider a finite set of values $\vals$ with a distinguished zero value $\z$. All common types (strings, numbers, booleans, addresses) are assumed to be transparently encoded to and from this value set (so for instance, any string is a value and any value is a string).
 
-For convenience, we can talk about the set of strings $\Str$, of addresses $\Addr$, of unsigned integers $\Uint$, or of booleans $\Bool$. But we are really talking about the set of values.
+For convenience, we can talk about the set of strings $\Str$, of addresses $\Addr$, of signed $\Int$ and unsigned integers $\Uint$, or of booleans $\Bool$. But we are really talking about the set of values.
 
 Common operations such as $+$, $-$, comparison, etc are defined on values.
 
@@ -260,14 +255,14 @@ We use variables, or names, as field names in the smart contract language, and a
 
 \paragraph{Memory}
 Contracts use memory as a transient scratchpad.
-% We use the following ground types: $\Nat$ for naturals, $\Addr$ for account addresses, $\Str$ for strings and $\Bool$ for booleans. We also consider the restricted element $\bot\not\in\vals$.
+% We use the following ground types: $\Uint$ for naturals, $\Addr$ for account addresses, $\Str$ for strings and $\Bool$ for booleans. We also consider the restricted element $\bot\not\in\vals$.
 A \emph{memory} or $\memory$ is a total mapping from names to values. The memory $(x\mapsto v,y\mapsto v')$ maps $x$ to $v$, $y$ to $v'$, and maps every other name to $\z$. $\zMem$ is the empty memory, it maps every name to $\z$.
 
 \paragraph{Tuples}
 We use tuples everywhere to structure definitions. A \emph{tuple} is a partial mapping from names (to anything). $()$ is the empty tuple.
 
 \begin{example}
-We will later introduce \emph{contracts} as tuples of the form $(\Abi\in\Str\rightarrow\bytecodes,\store\in\Nat\rightarrow\vals)$. 
+We will later introduce \emph{contracts} as tuples of the form $(\Abi\in\Str\rightarrow\bytecodes,\store\in\Uint\rightarrow\vals)$. 
 This means that all contracts have domain $\set{\Abi,\store}\subseteq\vars$, that they all map $\Abi$ to strings-to-bytecode mappings, and that they all map $\store$ to integers-to-value mappings.
 Given concrete values $A$ and $S$, $C = (\Abi\mapsto A,\store\mapsto D)$ is the contract such that $C(\Abi) = A$ and $C(\store) = D$
 \end{example}
@@ -295,8 +290,10 @@ $C\set{\store\mapsto D'}$ is the contract $(\Abi\mapsto A,\store\mapsto D')$. $a
 
 \paragraph{Nested update syntax} If $t$ is a tuple and $t.f$ is a mapping, then $t\set{f\set{\dots}} = t\set{f\mapsto t.f\set{\dots}}$.
 
-\begin{example} If $\state$ is a tuple, $\state.\textit{address}$ is a tuple, and $\state.\textit{address}.\store$ is a store, then $\state\set{\textit{address}\set{\store\set{3 \mapsto 7}}}$ is equal to $\state$ except that:
-$$\state.\textit{address}.\store(3) = 7$$
+\begin{example} If $\state$ is a tuple, $\state.\textit{address}$ is a tuple, and $\state.\textit{address}.\store$ is a store, then :
+$$\state\set{\textit{address}\set{\store\set{3 \mapsto 7}}}
+$$ 
+is equal to $\state$ except that $\state.\textit{address}.\store(3) = 7$.
 \end{example}
 
 \subsection{Bytecodes}
@@ -320,13 +317,25 @@ $\bcd[i]$ gives access to the \emph{call data} values. By convention $\brd[0]$ c
 
 We use $\bytecodes$ to denote the set of bytecodes (words recognised by the above grammar).
 
-\subsection{Smart contracts}
-A smart contract $\Ctr$ is a tuple of the form $$\Ctr:=(\Abi\in \Str\to \bytecodes, \store\in \Nat\to \vals)$$ where $\Abi$ is the contract's \emph{(application binary) interface}, mapping a function name to its bytecode. The contract storage maps positions to values in a persistent manner. We use $\contracts$ to denote the set of possible smart contracts.
+\subsection{Blockchain accounts and states.}
 
-A \emph{(blockchain) state} is a mapping $\state\in \Addr\to\contracts$. The set of all possible states is $\states$.
+\paragraph{Accounts.}
+\def\accounts{\mathit{Accounts}}
+
+An \emph{account} is a tuple of the form $$\mathit{account}:=(\mathit{external}\in\Bool,\Abi\in \Str\to \bytecodes, \store\in \Uint\to \vals)$$
+where $\Abi$ is the account's application binary interface and $\store$ is the account's storage. $\Abi$ maps strings (function names) to bytecodes and $\store$ maps positions to values in a persistent manner.
+We say that an account $A$ is \emph{external} if $A.\mathit{external}$ is true, and we say that $A$ is a \emph{contract} otherwise. We use $\accounts$ to denote the set of possible accounts and $\contracts$ to denote the subset of accounts that are contracts.
+
+All account $A$ must satisfy the properties:
+\begin{itemize}
+\item if $A$ is external, then $A.\Abi(f)=\z_\bytecodes$ and $A.\store(p)=\z_\vals$ for all function name $f$ and position $p$. 
+\item if $A$ is a contract, there exists a finite set of function names $\mc I_A\subseteq\Str$, such that for all $f\not\in \mc I_A$, $A.\Abi(f)=\revert{}$. We call the smallest set $\mc D_A$ satisfying the property the \emph{(effective) interface} of the contract.
+\end{itemize}
+
+\paragraph{State.} A \emph{(blockchain) state} is a mapping $\state\in\Addr\to\accounts$ and the set of all possible states is $\states$. 
 
 \begin{example}[ERC20]\label{ex:ERC20}
-A custodian (smart) contract of type ERC20 is a contract $\mathsf{ERC20}$ with:
+Consider the contract $\mathsf{ERC20}$ implementing the ERC20 standard for custodian contracts (we mention only the effective interface of the contract):
 $$
 \mathsf{ERC20}.\Abi := \left\{
 \begin{array}{lll}
@@ -342,15 +351,16 @@ and with store:
 $$
 \mathsf{ERC20}.\store := \left\{
 \begin{array}{lll}
-x_0 &\mapsto& \textrm{balance\_map}\in \Nat \\
-x_1 &\mapsto& \textrm{approval\_map}\in \Nat \\
-x_2 & \mapsto& \textrm{totalSupply}\in\Nat \\
+s_0 &\mapsto& \textrm{balance\_map}\in \Uint \\
+s_1 &\mapsto& \textrm{approval\_map}\in \Uint \\
+s_2 & \mapsto& \textrm{totalSupply}\in\Uint \\
 \dots
 \end{array}\right.
 $$
+with $s_i\in\Uint$ for $i\geq 0$. 
 \end{example}
 
-In \autoref{ex:ERC20}, notice the constant function \texttt{name}() that returns a human readable name for the token managed by this contract without reading the contract's storage\footnote{This models immutable constants of the Solidity language}. The \textit{balance\_map}, in the contract's storage, associates addresses to integers with $x_0[a]=n$ indicating that address $a$ owns $n$ tokens managed by this contract (see \autoref{sec:solidity-light} for the interpretation of a mapping in storage). The \textit{approval\_map} associates fund owner addresses to spender addresses and their allowance, so $x_1[\mathit{owner}][\mathit{spender}]=n$ indicates that the address $\mathit{spender}$ is allowed to transfer up to $n$ tokens  of \textit{owner} to an arbitrary address, using the \texttt{transferFrom} function of the ERC20's interface. We will come back to the modelling of ERC20 contracts in \autoref{sec:ERC20}.
+In \autoref{ex:ERC20}, notice the constant function \texttt{name}() that returns a human readable name for the token managed by this contract without reading the contract's storage\footnote{This models immutable constants of the Solidity language}. The \textit{balance\_map}, in the contract's storage, associates addresses to integers with $s_0[a]=n$ indicating that address $a$ owns $n$ tokens managed by this contract (see \autoref{sec:solidity-light} for the interpretation of a mapping in storage). The \textit{approval\_map} associates fund owner addresses to spender addresses and their allowance, so $s_1[\mathit{owner}][\mathit{spender}]=n$ indicates that the address $\mathit{spender}$ is allowed to transfer up to $n$ tokens  of \textit{owner} to an arbitrary address, using the \texttt{transferFrom} function of the ERC20's interface. We will come back to the modelling of ERC20 contracts in \autoref{sec:ERC20}.
 
 \section{Operational semantics}
 
@@ -367,7 +377,7 @@ An \emph{(execution) step} is a tuple of the form
 $$
 \step:=(
     \code\in\bytecodes,
-    \gas\in\Uint,
+    \gas\in\Int,
     \returnDataVal\in\vec\vals, 
     \memory\in\vars\to\vals, 
     \state\in\states
@@ -376,15 +386,26 @@ $$
 The set of all steps is $\steps$. 
 
 \subsection{Transaction initialisation}
-A \emph{transaction} $\tx$ is given as a tuple of the form $\tx:=(\originVal\in\Addr,\toVal\in\Addr,\fnVal\in\Str,\callDataVal\in\vec \vals, \gasVal\in\Uint)$ where $\originVal$ is the transaction originator, $\toVal$ is the address of the called contract, $\fnVal$ a function name and $\vec c$ its call data. The maximum amount of gas the transaction can spend is given by $\gasVal$.
+A \emph{transaction} is given as a tuple of the form $\tx:=(\originVal\in\Addr,\toVal\in\Addr,\fnVal\in\Str,\callDataVal\in\vec \vals, \gasVal\in\Uint)$ where $\originVal$ is the transaction originator, $\toVal$ is the address of the called contract, $\fnVal$ a function name and $\vec c$ its call data. The maximum amount of gas the transaction can spend is given by $\gasVal$.
 We use $\transactions$ to denote the set of transactions.
 
-A transaction $t$ executed on a blockchain $\state$ induces an initial context $\ctx_\tx$ and an initial step $\step_{\state,\tx}$, where:
+A transaction $t$ executed on a blockchain $\state$ induces an initial execution state: $\ctx_\tx\vdash\step_{\state,\tx}$ where:
 
 $$ \begin{array} {lll}
-\ctx_\tx &:=& (\tx.\originVal,\tx.\toVal,\tx.\callDataVal)\\\\
+\ctx_\tx &:=& (\tx.\callDataVal,\tx.\toVal,\tx.\originVal)\\\\
 \step_{\state,\tx} &:=& (\state(\tx.\toVal).\Abi(\tx.\fnVal),\tx.\gas, \zArray,\zMem,\state)\\\\
 \end{array}$$
+
+\begin{example}[\autoref{ex:ERC20} continued]
+We consider a blockchain state that contains a deployed instance of our ERC20 contract: $\state_0 := (a_0\mapsto \mathsf{ERC20})$ and the following transaction:
+$$
+\tx := (\originVal\mapsto o, \toVal\mapsto a_0, \fnVal\mapsto \str{name}, \callDataVal\mapsto [], \gas\mapsto G)
+$$
+for some address $o\in\Addr$ and gas amount $G\in\Uint$. This transaction yields the initial execution state:
+$$
+(\callDataVal\mapsto [],\thisVal\mapsto a_0,\senderVal\mapsto o) \vdash (\return{``token\_name"}, G, [], \zMem, \state_0)
+$$
+\end{example}
 
 \subsection{Checking gas limit}
 An execution step is out of gas if it has less than $0$ gas left. Derivation rules $\rar$ below don't check gas, but the steps are only valid ($\rightarrow$) if the step has some gas left. In the derivation below, $\str{out of gas}$ is a value that represents the string \emph{out of gas}.
@@ -392,7 +413,7 @@ An execution step is out of gas if it has less than $0$ gas left. Derivation rul
 \dfrac{
 \ctx\vdash\step\rar \step' \quad \step'.\gas < 0
 }{
-\ctx\vdash\step\to \step\set{\bytecode\mapsto \revert{\str{out of gas}};\zBytecode}
+\ctx\vdash\step\to \step\set{\code\mapsto \revert{\str{out of gas}}}
 }
 \end{equation}
 
@@ -412,7 +433,7 @@ A $\step$ that does not rewrite to any step through $\rightarrow$ is \emph{final
 A $\step$ \emph{returns} an array $r\in\vec\vals$ when either:
 \begin{itemize}
     \item $\step.\code = \return{x_1,\dots,x_n};\bytecode$, for some variables $x_i$\,s and code $\bytecode$, in which case:
-    $r = [\trueVal,\step.\memory(x_1),\dots,\step.\memory(x_n)]$.
+    $$r = [\trueVal,\step.\memory(x_1),\dots,\step.\memory(x_n)]$$
     \item $\step.\code = \zBytecode$, in which case $r = [\trueVal]$.
 \end{itemize}
 
