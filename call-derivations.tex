@@ -37,10 +37,10 @@ $$
 {\ctx\vdash\step \rar (B',g' ,r,\step.\memory,\state')}\rlab{(d)call}
 $$
 
-\begin{property}
-Assume a $\step$ that calls $(a,f,B,c,g)$ with continuation $B'$. The following properties hold:
+\begin{example}
+Assume a $\step$ that calls $(a,f,B,c,g)$ with continuation $B'$. The following statements hold, with the conventions introduced in \autoref{sec:accounts} for modelling externally owned accounts and contracts:
 \begin{itemize}
-\item If $\step.\state(a)$ is an external account, then $B=\z_\bytecodes$.
-\item If $\step.\state(a)$ is a contract, but $f$ is not an element of its interface, then $B=\revert{}$. 
+\item If $\step.\state(a)$ is an externally owned account, then $B=\z_\bytecodes$.
+\item If $\step.\state(a)$ is a contract, but $f$ is not an element of its effective interface, then $B=\revert{}$. 
 \end{itemize}
-\end{property}
+\end{example}
