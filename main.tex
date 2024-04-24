@@ -322,15 +322,9 @@ We use $\bytecodes$ to denote the set of bytecodes (words recognised by the abov
 \paragraph{Accounts.}
 \def\accounts{\mathit{Accounts}}
 
-An \emph{account} is a tuple of the form $$\mathit{account}:=(\mathit{external}\in\Bool,\Abi\in \Str\to \bytecodes, \store\in \Uint\to \vals)$$
+An \emph{account} is a tuple of the form $$\mathit{account}:=(\Abi\in \Str\to \bytecodes, \store\in \Uint\to \vals)$$
 where $\Abi$ is the account's application binary interface and $\store$ is the account's storage. $\Abi$ maps strings (function names) to bytecodes and $\store$ maps positions to values in a persistent manner.
-We say that an account $A$ is \emph{external} if $A.\mathit{external}$ is true, and we say that $A$ is a \emph{contract} otherwise. We use $\accounts$ to denote the set of possible accounts and $\contracts$ to denote the subset of accounts that are contracts.
-
-All account $A$ must satisfy the properties:
-\begin{itemize}
-\item if $A$ is external, then $A.\Abi(f)=\z_\bytecodes$ and $A.\store(p)=\z_\vals$ for all function name $f$ and position $p$. 
-\item if $A$ is a contract, there exists a finite set of function names $\mc I_A\subseteq\Str$, such that for all $f\not\in \mc I_A$, $A.\Abi(f)=\revert{}$. We call the smallest set $\mc D_A$ satisfying the property the \emph{(effective) interface} of the contract.
-\end{itemize}
+We use $\accounts$ to denote the set of possible accounts. A \emph{contract} is an account $A$ for which there exists at least a function symbol $f$ such that $A.\Abi(f)\neq\z_\bytecodes$. The \emph{effective interface} of an account $A$ is a set of function symbols $I_A\subseteq\Str$ such that for all $f\not\in I_A$, $A.\Abi(f)=\revert{\str{not defined}}$ and for all $f\in I_A$, $A.\Abi(f)\neq\revert{\str{not defined}}$. When modelling a smart contract we only mention its effective interface, and assume that all other function symbol map to the reverting bytecode on the reserved error message $\str{not defined}$. Note that externally owned accounts can be modelled as accounts whose ABI map all symbols to $\z_\bytecodes$ and whose store maps all position to $\z_\vals$.
 
 \paragraph{State.} A \emph{(blockchain) state} is a mapping $\state\in\Addr\to\accounts$ and the set of all possible states is $\states$. 
 

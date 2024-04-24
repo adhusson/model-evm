@@ -1,5 +1,4 @@
 # tex output
-main.pdf
 *.log
 *.gz
 *.fdb_latexmk
@@ -8,5 +7,3 @@ main.pdf
 *.bbl
 *.blg
 *.out
-
-main.pdf
